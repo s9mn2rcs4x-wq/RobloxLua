@@ -665,16 +665,7 @@ local CoreGui = getService("CoreGui")
 -- Interface Management
 
 local Rayfield = useStudio and script.Parent:FindFirstChild('Rayfield') or game:GetObjects("rbxassetid://10804731440")[1]
-
--- Give the main UI an innocuous, randomized name to reduce detection by name-based checks
-pcall(function()
-	if HttpService and HttpService.GenerateGUID then
-		local randName = "UI_" .. HttpService:GenerateGUID(false):gsub("-", "")
-		Rayfield.Name = randName
-	else
-		Rayfield.Name = "UI_" .. tostring(math.random(100000,999999))
-	end
-end)
+Rayfield.Name = "Rayfield"
 local buildAttempts = 0
 local correctBuild = false
 local warned
