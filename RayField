@@ -2772,6 +2772,11 @@ function RayfieldLibrary:CreateWindow(Settings)
 						TweenService:Create(DropdownOpt.Title, TweenInfo.new(0.3, Enum.EasingStyle.Exponential), {TextTransparency = 0}):Play()
 					end
 				end
+				-- show and focus the search box when opening
+				if SearchBox then
+					SearchBox.Visible = true
+					pcall(function() SearchBox:CaptureFocus() end)
+				end
 				Debounce = false
 			end
 
@@ -2790,6 +2795,11 @@ function RayfieldLibrary:CreateWindow(Settings)
 				TweenService:Create(Dropdown.Toggle, TweenInfo.new(0.7, Enum.EasingStyle.Exponential), {Rotation = 180}):Play()
 				task.wait(0.35)
 				Dropdown.List.Visible = false
+				-- hide and clear the search box when closing
+				if SearchBox then
+					SearchBox.Text = ""
+					SearchBox.Visible = false
+				end
 				Debounce = false
 			end
 
@@ -2946,7 +2956,7 @@ function RayfieldLibrary:CreateWindow(Settings)
 			SearchBox.Size = UDim2.new(1, -40, 0, 30)
 			SearchBox.Position = UDim2.new(0, 8, 0, 8)
 			SearchBox.TextXAlignment = Enum.TextXAlignment.Left
-			SearchBox.Visible = true
+			SearchBox.Visible = false
 
 			local function highlightOption(optFrame)
 				-- reset others
