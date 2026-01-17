@@ -1,3 +1,4 @@
+
 repeat
     task.wait()
 until game:IsLoaded()
@@ -5,27 +6,54 @@ until game:IsLoaded()
 local player = game.Players.LocalPlayer
 
 local CONFIG = {
-    DELAY = 0,
+    DELAY = 6,
     HIDE_CONSOLE = false,
     FAKE_LAG = true,
     BEHAVIOR_RANDOM = true,
     BLOCK_REMOTES = true,
 }
 
+print("Loading bypass framework...")
+
+-- Layer 1: External bypass (DISABLED)
+-- local bypassLoaded = false
+-- pcall(function()
+--     loadstring(game:HttpGet("https://raw.githubusercontent.com/Jko-Scripts/Adonis-AC-Bypass/main/Source.luau"))()
+--     bypassLoaded = true
+--     print("External bypass loaded")
+-- end)
 local bypassLoaded = false
 
+task.wait(2)
+
+-- Layer 2: Smart delay system
 local function smartWait()
-    pcall(function()
-        for _, v in pairs(game:GetService("ReplicatedStorage"):GetChildren()) do
-            if v.Name:lower():find("admin") then
-                return
+    local startTime = tick()
+    local maxWait = CONFIG.DELAY + 5
+    
+    while tick() - startTime < CONFIG.DELAY do
+        local adonisReady = false
+        pcall(function()
+            for _, v in pairs(game:GetService("ReplicatedStorage"):GetChildren()) do
+                if v.Name:lower():find("admin") then
+                    adonisReady = true
+                    break
+                end
             end
+        end)
+        
+        if adonisReady and tick() - startTime > 8 then
+            task.wait(3)
+            break
         end
-    end)
+        
+        task.wait(1)
+    end
 end
 
 smartWait()
 
+-- Layer 3: Metatable protection
 local oldMeta = {}
 local metaProtected = false
 
@@ -39,8 +67,10 @@ pcall(function()
     
     metaProtected = true
     setreadonly(mt, true)
+    print("Metatable protection enabled")
 end)
 
+-- Layer 4: Remote interception and kick protection
 if CONFIG.BLOCK_REMOTES then
     local blockedRemotes = {
         "Detected", "Kick", "Ban", "AdminDetection",
@@ -76,10 +106,12 @@ if CONFIG.BLOCK_REMOTES then
                     local args = {...}
                     local method = getnamecallmethod()
                     
+                    -- Block kick immediately
                     if method == "Kick" then
                         return nil
                     end
                     
+                    -- Exclude common operations to avoid detection
                     if method == "GetPropertyChangedSignal" or 
                        method == "GetAttribute" or 
                        method == "SetAttribute" or
@@ -94,6 +126,7 @@ if CONFIG.BLOCK_REMOTES then
                         return originalNamecall(self, table.unpack(args))
                     end
                     
+                    -- Enhanced remote interception
                     if method == "FireServer" or method == "InvokeServer" then
                         local success2, remoteName = pcall(function() 
                             if self and typeof(self) == "Instance" then
@@ -103,6 +136,7 @@ if CONFIG.BLOCK_REMOTES then
                         end)
                         
                         if success2 and remoteName and remoteName ~= "" then
+                            -- Check against blocked remotes
                             for _, blocked in ipairs(blockedRemotes) do
                                 if remoteName:find(blocked:lower(), 1, true) then
                                     if method == "InvokeServer" then
@@ -112,6 +146,7 @@ if CONFIG.BLOCK_REMOTES then
                                 end
                             end
                             
+                            -- Check against suspicious patterns
                             for _, pattern in ipairs(suspiciousPatterns) do
                                 if remoteName:find(pattern, 1, true) then
                                     if method == "InvokeServer" then
@@ -121,6 +156,7 @@ if CONFIG.BLOCK_REMOTES then
                                 end
                             end
                             
+                            -- Enhanced parameter modification
                             if #args >= 4 then
                                 local success3, isExternal = pcall(checkcaller)
                                 if success3 and isExternal then
@@ -129,6 +165,7 @@ if CONFIG.BLOCK_REMOTES then
                                         args[3] = 0
                                     end
                                     
+                                    -- Additional parameter modifications
                                     if remoteName:find("stamina") then
                                         if #args >= 1 then
                                             args[1] = math.max(0, math.min(100, args[1] or 100))
@@ -143,13 +180,16 @@ if CONFIG.BLOCK_REMOTES then
                 end)
                 
                 setreadonly(mt, true)
+                print("Remote interception enabled")
             end
         end)
     end
     
+    -- Enhanced multi-layer Kick protection
     if not getgenv().playerKickHooked then
         getgenv().playerKickHooked = true
         pcall(function()
+            -- Method 1: Direct replacement
             if player then
                 local kickMethod = player.Kick
                 if kickMethod and typeof(kickMethod) == "function" then
@@ -159,6 +199,7 @@ if CONFIG.BLOCK_REMOTES then
                 end
             end
             
+            -- Method 2: Metatable protection
             local playerMeta = getrawmetatable(player)
             if playerMeta then
                 setreadonly(playerMeta, false)
@@ -172,6 +213,7 @@ if CONFIG.BLOCK_REMOTES then
                 setreadonly(playerMeta, true)
             end
             
+            -- Method 3: Protect through Players service
             local playersService = game:GetService("Players")
             local originalKick = playersService.Kick
             if originalKick then
@@ -187,6 +229,7 @@ if CONFIG.BLOCK_REMOTES then
     end
 end
 
+-- Layer 5: Behavior randomization
 if CONFIG.BEHAVIOR_RANDOM then
     task.spawn(function()
         while task.wait(math.random(30, 60)) do
@@ -203,6 +246,7 @@ if CONFIG.BEHAVIOR_RANDOM then
     end)
 end
 
+-- Layer 6: Hide exploit traces
 pcall(function()
     for _, name in ipairs({"syn", "KRNL_LOADED", "EXECUTOR_NAME", "getexecutorname"}) do
         pcall(function()
@@ -213,6 +257,8 @@ pcall(function()
     end
 end)
 
+
+-- Layer 8: Fake lag system
 if CONFIG.FAKE_LAG then
     task.spawn(function()
         while task.wait(0.1) do
@@ -225,6 +271,7 @@ if CONFIG.FAKE_LAG then
     end)
 end
 
+-- Layer 9: Safe GetGC wrapper
 if not getgenv().getgcWrapped then
     getgenv().getgcWrapped = true
     pcall(function()
@@ -250,9 +297,11 @@ if not getgenv().getgcWrapped then
             return realGetGC(...)
         end
         
+        print("GetGC wrapper enabled")
     end)
 end
 
+-- Layer 10: GUI detection blocking
 task.spawn(function()
     pcall(function()
         local playerGui = player:WaitForChild("PlayerGui", 10)
@@ -274,6 +323,7 @@ task.spawn(function()
     end)
 end)
 
+-- Layer 11: Call stack spoofing
 if not getgenv().callStackSpoofed then
     getgenv().callStackSpoofed = true
     pcall(function()
@@ -294,12 +344,15 @@ if not getgenv().callStackSpoofed then
             return calling
         end
         
+        print("Call stack spoofing enabled")
     end)
 end
 
+-- Layer 13: Enhanced Detected function hook
 if not getgenv().detectedHookAttempted then
     getgenv().detectedHookAttempted = true
     task.spawn(function()
+        task.wait(5)
         
         local function safeGetGC()
             local success, result = pcall(function()
@@ -331,13 +384,15 @@ if not getgenv().detectedHookAttempted then
                         end)
                     end)
                     
+                    if hookSuccess then
+                        print("Detection hook installed successfully")
+                    end
                     break
                 end
             end
             
-
-            if checked % 20 == 0 then
-                task.wait(0.005)
+            if checked % 10 == 0 then
+                task.wait(0.01)
             end
         end
     end)
@@ -345,10 +400,13 @@ end
 
 local bypassSuccess = bypassLoaded or metaProtected
 
+task.wait(0.5)
+
 if bypassSuccess then
-    warn("Loaded")
+    print("|--FRAMEWORK LOADED--|")
+    print("Anti-cheat bypass successful")
 else
-    warn("Failed to load")
+    print("Anti-cheat bypass failed")
 end
 
 return {
@@ -357,10 +415,14 @@ return {
     metaProtected = metaProtected,
     
     safeGetGC = function()
+        task.wait(math.random(100, 500) / 1000)
         return getgc(true)
     end,
     
     safeFireServer = function(remote, ...)
+        if math.random(1, 3) == 1 then
+            task.wait(math.random(10, 50) / 1000)
+        end
         return remote:FireServer(...)
     end,
     
@@ -378,3 +440,4 @@ return {
         return bypassLoaded or (metaProtected and CONFIG.BLOCK_REMOTES)
     end,
 }
+
