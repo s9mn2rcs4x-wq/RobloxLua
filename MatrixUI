@@ -651,20 +651,20 @@ function FluxUI:CreateWindow(config)
                 end)
             end
             
-            -- Dropdown
+            -- Dropdown (floating overlay with search)
             function Section:CreateDropdown(cfg)
                 cfg = cfg or {}
                 local options = cfg.Options or {}
                 local selected = cfg.Default
                 local callback = cfg.Callback or function() end
                 local open = false
+                local optionButtons = {}
                 
                 local drop = Surface({
                     parent = items,
                     color = Tokens.elevated,
                     size = UDim2.new(1, 0, 0, 44),
-                    radius = Tokens.radiusSm,
-                    clip = true
+                    radius = Tokens.radiusSm
                 })
                 
                 Text({
@@ -689,26 +689,60 @@ function FluxUI:CreateWindow(config)
                 local arrow = Text({parent = selBtn, text = "▾", color = Tokens.textTertiary, textSize = 12})
                 arrow.Position = UDim2.new(1, -16, 0.5, -6)
                 
-                local optList = Stack({
-                    parent = drop,
-                    transparent = true,
-                    gap = 2,
-                    padding = Tokens.space[3],
-                    size = UDim2.new(1, 0, 0, 0),
-                    noRadius = true
+                -- Floating popup (parented to gui for overlay)
+                local popup = Surface({
+                    parent = gui,
+                    color = Tokens.surface,
+                    size = UDim2.new(0, 200, 0, 0),
+                    position = UDim2.new(0, 0, 0, 0),
+                    radius = Tokens.radiusSm
                 })
-                optList.Position = UDim2.new(0, 0, 0, 48)
+                popup.Visible = false
+                popup.ZIndex = 100
+                create("UIStroke", {Parent = popup, Color = Tokens.accent, Thickness = 1, ApplyStrokeMode = Enum.ApplyStrokeMode.Border})
                 
-                for _, opt in ipairs(options) do
+                -- Search box
+                local searchBox = create("TextBox", {
+                    Parent = popup,
+                    BackgroundColor3 = Tokens.bg,
+                    Position = UDim2.new(0, 6, 0, 6),
+                    Size = UDim2.new(1, -12, 0, 26),
+                    Font = Tokens.font,
+                    Text = "",
+                    PlaceholderText = "Search...",
+                    PlaceholderColor3 = Tokens.textTertiary,
+                    TextColor3 = Tokens.text,
+                    TextSize = Tokens.textSm,
+                    ClearTextOnFocus = false,
+                    ZIndex = 101
+                })
+                create("UICorner", {Parent = searchBox, CornerRadius = UDim.new(0, 4)})
+                
+                -- Options scroll
+                local optScroll = create("ScrollingFrame", {
+                    Parent = popup,
+                    BackgroundTransparency = 1,
+                    Position = UDim2.new(0, 6, 0, 36),
+                    Size = UDim2.new(1, -12, 1, -42),
+                    ScrollBarThickness = 2,
+                    ScrollBarImageColor3 = Tokens.accent,
+                    CanvasSize = UDim2.new(0, 0, 0, 0),
+                    AutomaticCanvasSize = Enum.AutomaticSize.Y,
+                    ZIndex = 101
+                })
+                create("UIListLayout", {Parent = optScroll, Padding = UDim.new(0, 2)})
+                
+                local function createOptionBtn(opt)
                     local optBtn = create("TextButton", {
-                        Parent = optList,
+                        Parent = optScroll,
                         BackgroundColor3 = Tokens.bg,
-                        Size = UDim2.new(1, 0, 0, 28),
+                        Size = UDim2.new(1, 0, 0, 26),
                         Font = Tokens.font,
                         Text = opt,
                         TextColor3 = Tokens.textSecondary,
                         TextSize = Tokens.textSm,
-                        AutoButtonColor = false
+                        AutoButtonColor = false,
+                        ZIndex = 102
                     })
                     create("UICorner", {Parent = optBtn, CornerRadius = UDim.new(0, 4)})
                     
@@ -718,19 +752,96 @@ function FluxUI:CreateWindow(config)
                         selected = opt
                         selBtn.Text = opt
                         open = false
-                        tween(drop, {Size = UDim2.new(1, 0, 0, 44)})
+                        popup.Visible = false
                         arrow.Text = "▾"
+                        searchBox.Text = ""
                         callback(opt)
                     end)
+                    
+                    return optBtn
+                end
+                
+                -- Build options
+                for _, opt in ipairs(options) do
+                    optionButtons[opt] = createOptionBtn(opt)
+                end
+                
+                -- Search filter
+                searchBox:GetPropertyChangedSignal("Text"):Connect(function()
+                    local query = searchBox.Text:lower()
+                    for opt, btn in pairs(optionButtons) do
+                        btn.Visible = query == "" or opt:lower():find(query, 1, true) ~= nil
+                    end
+                end)
+                
+                local function closePopup()
+                    open = false
+                    popup.Visible = false
+                    arrow.Text = "▾"
+                    searchBox.Text = ""
+                end
+                
+                local function openPopup()
+                    open = true
+                    arrow.Text = "▴"
+                    
+                    -- Position popup below the button
+                    local absPos = selBtn.AbsolutePosition
+                    local absSize = selBtn.AbsoluteSize
+                    local popupHeight = math.min(200, 40 + #options * 28)
+                    
+                    popup.Position = UDim2.new(0, absPos.X, 0, absPos.Y + absSize.Y + 4)
+                    popup.Size = UDim2.new(0, absSize.X, 0, popupHeight)
+                    popup.Visible = true
+                    
+                    -- Reset filter
+                    searchBox.Text = ""
+                    for _, btn in pairs(optionButtons) do
+                        btn.Visible = true
+                    end
                 end
                 
                 selBtn.MouseButton1Click:Connect(function()
-                    open = not open
-                    tween(drop, {Size = UDim2.new(1, 0, 0, open and (52 + #options * 32) or 44)})
-                    arrow.Text = open and "▴" or "▾"
+                    if open then
+                        closePopup()
+                    else
+                        openPopup()
+                    end
                 end)
                 
-                return {Set = function(_, v) selected = v selBtn.Text = v callback(v) end, Get = function() return selected end}
+                -- Close when clicking outside
+                UserInputService.InputBegan:Connect(function(input)
+                    if open and input.UserInputType == Enum.UserInputType.MouseButton1 then
+                        local mousePos = UserInputService:GetMouseLocation()
+                        local popupPos = popup.AbsolutePosition
+                        local popupSize = popup.AbsoluteSize
+                        
+                        local inPopup = mousePos.X >= popupPos.X and mousePos.X <= popupPos.X + popupSize.X
+                            and mousePos.Y >= popupPos.Y and mousePos.Y <= popupPos.Y + popupSize.Y
+                        
+                        local btnPos = selBtn.AbsolutePosition
+                        local btnSize = selBtn.AbsoluteSize
+                        local inBtn = mousePos.X >= btnPos.X and mousePos.X <= btnPos.X + btnSize.X
+                            and mousePos.Y >= btnPos.Y and mousePos.Y <= btnPos.Y + btnSize.Y
+                        
+                        if not inPopup and not inBtn then
+                            task.defer(closePopup)
+                        end
+                    end
+                end)
+                
+                return {
+                    Set = function(_, v) selected = v selBtn.Text = v callback(v) end,
+                    Get = function() return selected end,
+                    Refresh = function(_, newOptions)
+                        for _, btn in pairs(optionButtons) do btn:Destroy() end
+                        optionButtons = {}
+                        options = newOptions
+                        for _, opt in ipairs(options) do
+                            optionButtons[opt] = createOptionBtn(opt)
+                        end
+                    end
+                }
             end
             
             -- Input
