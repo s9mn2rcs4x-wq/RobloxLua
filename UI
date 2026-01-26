@@ -152,7 +152,6 @@ end
 		end,
 		__index = IndexUIColor
 	})
-	getgenv().UIColor["Logo Image"] = "rbxassetid://134526099140925"
 	
 	local currcolor = {}
 	local Library = {};
@@ -161,6 +160,16 @@ local TweenService = game:GetService('TweenService')
 local uis = game:GetService("UserInputService")
 local GuiService = game:GetService("GuiService")
 local Players = game:GetService("Players")
+
+local function safeCall(fn, ...)
+	if type(fn) ~= "function" then
+		return
+	end
+	local ok, err = pcall(fn, ...)
+	if not ok then
+		warn(err)
+	end
+end
 
 function Library.EnableAntiAFK()
 	if Library_Function._antiAfkConn then
@@ -542,7 +551,7 @@ end
 		Library_Function.Gui.Enabled = false
 		repeat wait()
 		until getgenv().ReadyForGuiLoaded
-		Library_Function.Gui.Enabled = true
+		Library_Function.Gui.Enabled = not getgenv().AutoHideOnLaunch
 	end)
 	
 	Library_Function.NotiGui = Instance.new('ScreenGui')
@@ -587,8 +596,6 @@ end
 		local Noticontainer = Instance.new("Frame")
 		local UICorner = Instance.new("UICorner")
 		local Topnoti = Instance.new("Frame")
-		local Ruafimg = Instance.new("ImageLabel")
-		local RuafimgCorner = Instance.new("UICorner")
 		local TextLabelNoti = Instance.new("TextLabel")
 		local CloseContainer = Instance.new("Frame")
 		local CloseImage = Instance.new("ImageLabel")
@@ -624,21 +631,7 @@ end
 		Topnoti.Position = UDim2.new(0, 0, 0, 5)
 		Topnoti.Size = UDim2.new(1, 0, 0, 25)
 	
-		Ruafimg.Name = "Ruafimg"
-		Ruafimg.Parent = Topnoti
-		Ruafimg.BackgroundColor3 = Color3.fromRGB(230, 230, 230)
-		Ruafimg.BackgroundTransparency = 1.000
-		Ruafimg.Position = UDim2.new(0, 10, 0, 0)
-		Ruafimg.Size = UDim2.new(0, 25, 0, 25)
-		Ruafimg.Image = Library_Function.GetIMG(getgenv().UIColor["Logo Image"])
-		table.insert(UpdateCallBack["Logo Image"], function() 
-			Ruafimg.Image = Library_Function.GetIMG(getgenv().UIColor["Logo Image"])
-		end)
-		
-	
-		RuafimgCorner.CornerRadius = UDim.new(1, 0)
-		RuafimgCorner.Name = "RuafimgCorner"
-		RuafimgCorner.Parent = Ruafimg
+		-- logo removed; use title text only
 		
 		local colorR = tostring(Library_Function.Getcolor(getgenv().UIColor['Title Text Color'])[1])
 		local colorG = tostring(Library_Function.Getcolor(getgenv().UIColor['Title Text Color'])[2])
@@ -658,7 +651,7 @@ end
 		TextLabelNoti.Parent = Topnoti
 		TextLabelNoti.BackgroundColor3 = Color3.fromRGB(230, 230, 230)
 		TextLabelNoti.BackgroundTransparency = 1.000
-		TextLabelNoti.Position = UDim2.new(0, 40, 0, 0)
+		TextLabelNoti.Position = UDim2.new(0, 10, 0, 0)
 		TextLabelNoti.Size = UDim2.new(1, -40, 1, 0)
 		TextLabelNoti.Font = Enum.Font.GothamBold
 		TextLabelNoti.TextSize = 14.000
@@ -755,6 +748,10 @@ end
 		local TitleNameMain = (Setting.Title ~= nil and tostring(Setting.Title)) or "Xero Hub"
 		getgenv().MainDesc = Setting.Desc or ""
 		local builtInSettings = Setting.BuiltInSettings ~= false
+		if getgenv().AutoLoadConfig then
+			local autoName = getgenv().AutoLoadConfigName or "Default"
+			Library.LoadProfile(autoName)
+		end
 		if Setting.AntiAFK or getgenv().AntiAFK then
 			Library.EnableAntiAFK()
 		end
@@ -802,7 +799,6 @@ end
 		local maingui = Instance.new("ImageLabel")
 		local MainCorner = Instance.new("UICorner")
 		local TopMain = Instance.new("Frame")
-		local Ruafimg = Instance.new("ImageLabel")
 		local TextLabelMain = Instance.new("TextLabel")
 		local PageControl = Instance.new("Frame")
 		local UICorner = Instance.new("UICorner")
@@ -1015,24 +1011,13 @@ end
 		TopMain.BackgroundTransparency = 1.000
 		TopMain.Size = UDim2.new(1, 0, 0, 30)
 		
-		Ruafimg.Name = "Ruafimg"
-		Ruafimg.Parent = TopMain
-		Ruafimg.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-		Ruafimg.BackgroundTransparency = 1.000
-		Ruafimg.AnchorPoint = Vector2.new(0, 0.5)
-		Ruafimg.Position = UDim2.new(0, 5, 0.5, 0)
-		Ruafimg.Size = UDim2.new(0, 25, 0, 25)
-		Ruafimg.Image = Library_Function.GetIMG(getgenv().UIColor["Logo Image"])
-		table.insert(UpdateCallBack["Logo Image"],function() 
-			Ruafimg.Image = Library_Function.GetIMG(getgenv().UIColor["Logo Image"])
-		end)
-		
+		-- logo removed; use title text only
 		TextLabelMain.Name = "TextLabelMain"
 		TextLabelMain.Parent = TopMain
 		TextLabelMain.BackgroundColor3 = Color3.fromRGB(230, 230, 230)
 		TextLabelMain.BackgroundTransparency = 1.000
-		TextLabelMain.Position = UDim2.new(0, 35, 0, 0)
-		TextLabelMain.Size = UDim2.new(1, -70, 1, 0)
+		TextLabelMain.Position = UDim2.new(0, 10, 0, 0)
+		TextLabelMain.Size = UDim2.new(1, -40, 1, 0)
 		TextLabelMain.Font = Enum.Font.GothamBold
 		TextLabelMain.RichText = true
 		TextLabelMain.TextSize = 16.000
@@ -2496,21 +2481,21 @@ end
 							if DefaultValue <= Min_Value then DefaultValue = Min_Value elseif DefaultValue >= Max_Value then DefaultValue = Max_Value end
 							Bar.Size = UDim2.new(1 - ((Max_Value - DefaultValue) / (Max_Value - Min_Value)),0, 0, 6)
 							Sliderbox_2.Text = DefaultValue
-							Callback(DefaultValue)
+							safeCall(Callback,DefaultValue)
 						end
 	
 						SliderButton.MouseButton1Down:Connect(function()
 							local value = Precise and  tonumber(string.format("%.1f",(((tonumber(Max_Value) - tonumber(Min_Value)) / SizeChia) * Bar.AbsoluteSize.X) + tonumber(Min_Value))) or math.floor((((tonumber(Max_Value) - tonumber(Min_Value)) / SizeChia) * Bar.AbsoluteSize.X) + tonumber(Min_Value))
 	
 							pcall(function()
-								Callback(value)
+								safeCall(Callback,value)
 								Sliderbox_2.Text = value
 							end)
 							Bar.Size = UDim2.new(0, math.clamp(mouse.X - Bar.AbsolutePosition.X, 0, SizeChia), 0, 6)
 							moveconnection = mouse.Move:Connect(function()   
 								local value = Precise and  tonumber(string.format("%.1f",(((tonumber(Max_Value) - tonumber(Min_Value)) / SizeChia) * Bar.AbsoluteSize.X) + tonumber(Min_Value))) or math.floor((((tonumber(Max_Value) - tonumber(Min_Value)) / SizeChia) * Bar.AbsoluteSize.X) + tonumber(Min_Value))
 								pcall(function()
-									Callback(value)
+									safeCall(Callback,value)
 									Sliderbox_2.Text = value
 								end)
 								Bar.Size = UDim2.new(0, math.clamp(mouse.X - Bar.AbsolutePosition.X, 0, SizeChia), 0, 6)
@@ -2520,7 +2505,7 @@ end
 									local value = Precise and  tonumber(string.format("%.1f",(((tonumber(Max_Value) - tonumber(Min_Value)) / SizeChia) * Bar.AbsoluteSize.X) + tonumber(Min_Value))) or math.floor((((tonumber(Max_Value) - tonumber(Min_Value)) / SizeChia) * Bar.AbsoluteSize.X) + tonumber(Min_Value))
 	
 									pcall(function()
-										Callback(value)
+										safeCall(Callback,value)
 										Sliderbox_2.Text = value
 									end)
 									Bar.Size = UDim2.new(0, math.clamp(mouse.X - Bar.AbsolutePosition.X, 0, SizeChia), 0, 6)
@@ -2534,15 +2519,15 @@ end
 							if tonumber(Value) <= Min_Value then
 								Bar.Size = UDim2.new(0,(0 * SizeChia), 0, 6)
 								Sliderbox_2.Text = Min_Value
-								Callback(tonumber(Min_Value))
+								safeCall(Callback,tonumber(Min_Value))
 	
 							elseif tonumber(Value) >= Max_Value then
 								Bar.Size = UDim2.new(0,(Max_Value  /  Max_Value * SizeChia), 0, 6)
 								Sliderbox_2.Text = Max_Value
-								Callback(tonumber(Max_Value))
+								safeCall(Callback,tonumber(Max_Value))
 							else
 								Bar.Size = UDim2.new(1 - ((Max_Value - Value) / (Max_Value - Min_Value)),0, 0, 6)
-								Callback(tonumber(Value))
+								safeCall(Callback,tonumber(Value))
 							end
 						end
 	
@@ -3237,10 +3222,10 @@ end
 								BoxText.FocusLost:Connect(function()
 									boxValue = BoxText.Text
 									if Callback then
-										Callback(Default, boxValue)
+										safeCall(Callback,Default, boxValue)
 									end
 									if BoxSetting.Callback then
-										BoxSetting.Callback(boxValue)
+										safeCall(BoxSetting.Callback, boxValue)
 									end
 								end)
 							end
@@ -3260,7 +3245,7 @@ end
 	
 								game.TweenService:Create(check,TweenInfo.new(getgenv().UIColor["Tween Animation 1 Speed"]),{Size = csize, Position = pos, AnchorPoint = apos}):Play()
 	
-								Callback(val, boxValue)
+								safeCall(Callback,val, boxValue)
 	
 							end
 	
@@ -3374,7 +3359,7 @@ end
 							end)
 	
 							Button.MouseButton1Down:Connect(function()
-								Callback()
+								safeCall(Callback)
 							end)
 	
 						end
@@ -3776,7 +3761,7 @@ end
 	
 											refreshlist()
 											if Callback then 
-												Callback(v,i)
+												safeCall(Callback,v,i)
 											end
 	
 										end)
@@ -3870,7 +3855,7 @@ end
 											TweenService:Create(InLine,TweenInfo.new(getgenv().UIColor["Tween Animation 2 Speed"]),{BackgroundTransparency = linetran}):Play()
 	
 											if Callback then
-												Callback(i,v)
+												safeCall(Callback,i,v)
 												ListNew[i] = v
 											end
 										end)
@@ -3890,7 +3875,7 @@ end
 							end
 	
 							if typeof(Default) ~= 'table' then
-								Callback(Default)
+								safeCall(Callback,Default)
 								if Search then
 									Dropdowntitle.PlaceholderText = Title..': '..tostring(Default)
 								else
@@ -3899,7 +3884,7 @@ end
 							elseif Selected then
 								for i,v in next, Default do
 									ListNew[i] = v
-									Callback(i,v)
+									safeCall(Callback,i,v)
 								end
 								Dropdowntitle.Text = ''
 								Dropdowntitle.PlaceholderText = Title..': '
@@ -3971,7 +3956,7 @@ end
 	
 								for i,v in next, ListNew do
 									if Selected then
-										Callback(i,v)
+										safeCall(Callback,i,v)
 									end
 								end
 	
@@ -4112,7 +4097,7 @@ end
 			
 							game:GetService("UserInputService").InputBegan:Connect(function(i)
 								if (Default == i.UserInputType or Default == i.KeyCode) then
-									Callback(Default);
+									safeCall(Callback,Default);
 								end;
 							end);
 							
@@ -4253,7 +4238,7 @@ end
 							Boxxx.FocusLost:Connect(function()
 								TweenService:Create(Lineeeee,TweenInfo.new(getgenv().UIColor["Tween Animation 2 Speed"]),{BackgroundTransparency = 1}):Play()
 								if Boxxx.Text ~= '' then
-									Callback(Boxxx.Text)
+									safeCall(Callback,Boxxx.Text)
 								end
 							end)
 	
@@ -4261,12 +4246,12 @@ end
 	
 							if Default then
 								Boxxx.Text = Default
-								Callback(Default)
+								safeCall(Callback,Default)
 							end
 	
 							function textbox_function.SetValue(Value)
 								Boxxx.Text = Value
-								Callback(Value)
+								safeCall(Callback,Value)
 							end 
 	
 							return textbox_function;
@@ -4425,21 +4410,21 @@ end
 								if DefaultValue <= Min_Value then DefaultValue = Min_Value elseif DefaultValue >= Max_Value then DefaultValue = Max_Value end
 								Bar.Size = UDim2.new(1 - ((Max_Value - DefaultValue) / (Max_Value - Min_Value)),0, 0, 6)
 								Sliderbox_2.Text = DefaultValue
-								Callback(DefaultValue)
+								safeCall(Callback,DefaultValue)
 							end
 	
 							SliderButton.MouseButton1Down:Connect(function()
 								local value = Precise and  tonumber(string.format("%.1f",(((tonumber(Max_Value) - tonumber(Min_Value)) / SizeChia) * Bar.AbsoluteSize.X) + tonumber(Min_Value))) or math.floor((((tonumber(Max_Value) - tonumber(Min_Value)) / SizeChia) * Bar.AbsoluteSize.X) + tonumber(Min_Value))
 	
 								pcall(function()
-									Callback(value)
+									safeCall(Callback,value)
 									Sliderbox_2.Text = value
 								end)
 								Bar.Size = UDim2.new(0, math.clamp(mouse.X - Bar.AbsolutePosition.X, 0, SizeChia), 0, 6)
 								moveconnection = mouse.Move:Connect(function()   
 									local value = Precise and  tonumber(string.format("%.1f",(((tonumber(Max_Value) - tonumber(Min_Value)) / SizeChia) * Bar.AbsoluteSize.X) + tonumber(Min_Value))) or math.floor((((tonumber(Max_Value) - tonumber(Min_Value)) / SizeChia) * Bar.AbsoluteSize.X) + tonumber(Min_Value))
 									pcall(function()
-										Callback(value)
+										safeCall(Callback,value)
 										Sliderbox_2.Text = value
 									end)
 									Bar.Size = UDim2.new(0, math.clamp(mouse.X - Bar.AbsolutePosition.X, 0, SizeChia), 0, 6)
@@ -4449,7 +4434,7 @@ end
 										local value = Precise and  tonumber(string.format("%.1f",(((tonumber(Max_Value) - tonumber(Min_Value)) / SizeChia) * Bar.AbsoluteSize.X) + tonumber(Min_Value))) or math.floor((((tonumber(Max_Value) - tonumber(Min_Value)) / SizeChia) * Bar.AbsoluteSize.X) + tonumber(Min_Value))
 	
 										pcall(function()
-											Callback(value)
+											safeCall(Callback,value)
 											Sliderbox_2.Text = value
 										end)
 										Bar.Size = UDim2.new(0, math.clamp(mouse.X - Bar.AbsolutePosition.X, 0, SizeChia), 0, 6)
@@ -4463,15 +4448,15 @@ end
 								if tonumber(Value) <= Min_Value then
 									Bar.Size = UDim2.new(0,(0 * SizeChia), 0, 6)
 									Sliderbox_2.Text = Min_Value
-									Callback(tonumber(Min_Value))
+									safeCall(Callback,tonumber(Min_Value))
 	
 								elseif tonumber(Value) >= Max_Value then
 									Bar.Size = UDim2.new(0,(Max_Value  /  Max_Value * SizeChia), 0, 6)
 									Sliderbox_2.Text = Max_Value
-									Callback(tonumber(Max_Value))
+									safeCall(Callback,tonumber(Max_Value))
 								else
 									Bar.Size = UDim2.new(1 - ((Max_Value - Value) / (Max_Value - Min_Value)),0, 0, 6)
-									Callback(tonumber(Value))
+									safeCall(Callback,tonumber(Value))
 								end
 							end
 	
@@ -4518,19 +4503,11 @@ end
 			end)
 
 			uiSection.CreateToggle({
-				Title = "Click Effects",
-				Desc = "Enable click animations",
-				Default = getgenv().ClickFXEnabled ~= false
+				Title = "Auto Hide on Launch",
+				Desc = "Start UI hidden",
+				Default = getgenv().AutoHideOnLaunch == true
 			}, function(val)
-				Library.SetClickFXEnabled(val)
-			end)
-
-			uiSection.CreateToggle({
-				Title = "Auto Scale",
-				Desc = "Scale UI to screen size",
-				Default = Library_Function._autoScaleEnabled == true
-			}, function(val)
-				Library.EnableAutoScale(val)
+				getgenv().AutoHideOnLaunch = val
 			end)
 
 			local toggleKey = Setting.ToggleKey or getgenv().ToggleKey or Enum.KeyCode.RightControl
@@ -4554,6 +4531,23 @@ end
 				Default = profileName
 			}, function(val)
 				profileName = val
+				getgenv().AutoLoadConfigName = val
+			end)
+			profileSection.CreateToggle({
+				Title = "Auto Load Config",
+				Desc = "Load this profile on launch",
+				Default = getgenv().AutoLoadConfig == true
+			}, function(val)
+				getgenv().AutoLoadConfig = val
+				getgenv().AutoLoadConfigName = profileName
+				if val then
+					local ok = Library.LoadProfile(profileName)
+					if ok then
+						Library.CreateNoti({Title = "Profile", Desc = "Auto-loaded: " .. profileName, ShowTime = 3})
+					else
+						Library.CreateNoti({Title = "Profile", Desc = "Auto-load failed: " .. profileName, ShowTime = 4})
+					end
+				end
 			end)
 			profileSection.CreateButton({Title = "Save Profile"}, function()
 				local name = Library.SaveProfile(profileName)
@@ -4574,3 +4568,4 @@ end
 	end
 	
 	return Library
+
