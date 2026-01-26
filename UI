@@ -7,7 +7,7 @@ if getgenv().Tvk then
 		["Border Color"] = Color3.fromRGB(255, 1, 132),
 		["Click Effect Color"] = Color3.fromRGB(230, 230, 230),
 		["Setting Icon Color"] = Color3.fromRGB(230, 230, 230),
-		["Logo Image"] = "rbxassetid://16109161849",
+		["Logo Image"] = "rbxassetid://134526099140925",
 		["Search Icon Color"] = Color3.fromRGB(255, 255, 255),
 		["Search Icon Highlight Color"] = Color3.fromRGB(255, 180, 180),
 		["GUI Text Color"] = Color3.fromRGB(230, 230, 230),
@@ -2711,6 +2711,15 @@ if getgenv().Tvk then
 							local Default = Setting.Default
 							if Default == nil then Default = false end
 							local Callback = Callback or function() end
+							local BoxSetting = type(Setting.Box) == "table" and Setting.Box or nil
+							local hasBox = BoxSetting ~= nil
+							local boxGap = 6
+							local boxWidth = hasBox and (tonumber(BoxSetting.Width) or 120) or 0
+							local boxHeight = hasBox and (tonumber(BoxSetting.Height) or 22) or 0
+							local boxValue = hasBox and tostring(BoxSetting.Default or "") or nil
+							local textRightPad = 35 + (hasBox and (boxWidth + boxGap) or 0)
+							local leftPadTitle = 10
+							local leftPadDesc = 15
 	
 							local ToggleFrame = Instance.new("Frame")
 							local TogFrame1 = Instance.new("Frame")
@@ -2772,8 +2781,8 @@ if getgenv().Tvk then
 								ToggleDesc.Parent = TogFrame1
 								ToggleDesc.BackgroundColor3 = Color3.fromRGB(230, 230, 230)
 								ToggleDesc.BackgroundTransparency = 1.000
-								ToggleDesc.Position = UDim2.new(0, 15, 0, 20)
-								ToggleDesc.Size = UDim2.new(1, -50, 0, 0)
+								ToggleDesc.Position = UDim2.new(0, leftPadDesc, 0, 20)
+								ToggleDesc.Size = UDim2.new(1, -(leftPadDesc + textRightPad), 0, 0)
 								ToggleDesc.Font = Enum.Font.GothamBlack
 								ToggleDesc.Text = Desc
 								ToggleDesc.TextSize = 13.000
@@ -2793,8 +2802,8 @@ if getgenv().Tvk then
 							ToggleTitle.Parent = TogFrame1
 							ToggleTitle.BackgroundColor3 = Color3.fromRGB(230, 230, 230)
 							ToggleTitle.BackgroundTransparency = 1.000
-							ToggleTitle.Position = UDim2.new(0, 10, 0, cac)
-							ToggleTitle.Size = UDim2.new(1, -10, 0, 20)
+							ToggleTitle.Position = UDim2.new(0, leftPadTitle, 0, cac)
+							ToggleTitle.Size = UDim2.new(1, -(leftPadTitle + textRightPad), 0, 20)
 							ToggleTitle.Font = Enum.Font.GothamBlack
 							ToggleTitle.Text = Title
 							ToggleTitle.TextSize = 14.000
@@ -2833,7 +2842,71 @@ if getgenv().Tvk then
 							ToggleButton.Text = ""
 							ToggleButton.TextColor3 = Color3.fromRGB(0, 0, 0)
 							ToggleButton.TextSize = 14.000
-	
+							ToggleButton.ZIndex = 1
+
+							if hasBox then
+								local BoxCor = Instance.new("Frame")
+								local BoxCorner = Instance.new("UICorner")
+								local BoxText = Instance.new("TextBox")
+
+								BoxCor.Name = "ToggleBox"
+								BoxCor.Parent = TogFrame1
+								BoxCor.AnchorPoint = Vector2.new(1, 0.5)
+								BoxCor.Position = UDim2.new(1, -(5 + 25 + boxGap), 0.5, 3)
+								BoxCor.Size = UDim2.new(0, boxWidth, 0, boxHeight)
+								BoxCor.BackgroundColor3 = getgenv().UIColor["Background 2 Color"]
+								BoxCor.BackgroundTransparency = getgenv().UIColor["Background 1 Transparency"]
+								BoxCor.ZIndex = 2
+								table.insert(UpdateCallBack["Background 2 Color"],function()
+									BoxCor.BackgroundColor3 = getgenv().UIColor["Background 2 Color"]
+								end)
+								table.insert(UpdateCallBack["Background 1 Transparency"],function()
+									BoxCor.BackgroundTransparency = getgenv().UIColor["Background 1 Transparency"]
+								end)
+
+								BoxCorner.CornerRadius = UDim.new(0, 4)
+								BoxCorner.Parent = BoxCor
+
+								BoxText.Name = "TextColorPlaceholder"
+								BoxText.Parent = BoxCor
+								BoxText.BackgroundTransparency = 1.000
+								BoxText.Position = UDim2.new(0, 5, 0, 0)
+								BoxText.Size = UDim2.new(1, -10, 1, 0)
+								BoxText.Font = Enum.Font.GothamBold
+								BoxText.Text = boxValue
+								BoxText.PlaceholderText = BoxSetting.Placeholder or ""
+								BoxText.TextSize = 14.000
+								BoxText.TextXAlignment = Enum.TextXAlignment.Left
+								BoxText.PlaceholderColor3 = getgenv().UIColor["Placeholder Text Color"]
+								BoxText.TextColor3 = getgenv().UIColor["Text Color"]
+								BoxText.ZIndex = 3
+								table.insert(UpdateCallBack["Placeholder Text Color"],function()
+									BoxText.PlaceholderColor3 = getgenv().UIColor["Placeholder Text Color"]
+								end)
+								table.insert(UpdateCallBack["Text Color"],function()
+									BoxText.TextColor3 = getgenv().UIColor["Text Color"]
+								end)
+
+								if BoxSetting.Number then
+									BoxText:GetPropertyChangedSignal("Text"):Connect(function()
+										if BoxText.Text == "" then return end
+										if not tonumber(BoxText.Text) then
+											BoxText.Text = ""
+										end
+									end)
+								end
+
+								BoxText.FocusLost:Connect(function()
+									boxValue = BoxText.Text
+									if Callback then
+										Callback(Default, boxValue)
+									end
+									if BoxSetting.Callback then
+										BoxSetting.Callback(boxValue)
+									end
+								end)
+							end
+
 							ToggleList.Name = "ToggleList"
 							ToggleList.Parent = ToggleFrame
 							ToggleList.HorizontalAlignment = Enum.HorizontalAlignment.Center
@@ -2849,7 +2922,7 @@ if getgenv().Tvk then
 	
 								game.TweenService:Create(check,TweenInfo.new(getgenv().UIColor["Tween Animation 1 Speed"]),{Size = csize, Position = pos, AnchorPoint = apos}):Play()
 	
-								Callback(val)
+								Callback(val, boxValue)
 	
 							end
 	
@@ -2867,13 +2940,30 @@ if getgenv().Tvk then
 							end)
 	
 							local tog_func = {}
-	
+
 									function tog_func.SetStage(value)
 										if value ~= Default then 
 											ButtonClick()
 										end
 									end
-	
+
+									function tog_func.SetBoxValue(value)
+										if not hasBox then return end
+										boxValue = tostring(value)
+										for _, child in ipairs(TogFrame1:GetChildren()) do
+											if child.Name == "ToggleBox" then
+												local tb = child:FindFirstChild("TextColorPlaceholder")
+												if tb then
+													tb.Text = boxValue
+												end
+											end
+										end
+									end
+
+									function tog_func.GetBoxValue()
+										return boxValue
+									end
+
 							return tog_func
 	
 	
