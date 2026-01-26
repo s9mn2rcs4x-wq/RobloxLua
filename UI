@@ -171,6 +171,40 @@ local function safeCall(fn, ...)
 	end
 end
 
+local function addStroke(target, colorKey, thickness, transparency)
+	if not target then
+		return nil
+	end
+	local stroke = Instance.new("UIStroke")
+	stroke.Thickness = thickness or 1
+	stroke.Transparency = transparency or 0.8
+	local key = colorKey or "GUI Text Color"
+	if UpdateCallBack[key] then
+		stroke.Color = getgenv().UIColor[key]
+		table.insert(UpdateCallBack[key], function()
+			stroke.Color = getgenv().UIColor[key]
+		end)
+	else
+		stroke.Color = Color3.fromRGB(255, 255, 255)
+	end
+	stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+	stroke.Parent = target
+	return stroke
+end
+
+local function addPadding(target, left, top, right, bottom)
+	if not target then
+		return nil
+	end
+	local pad = Instance.new("UIPadding")
+	pad.PaddingLeft = UDim.new(0, left or 4)
+	pad.PaddingRight = UDim.new(0, right or left or 4)
+	pad.PaddingTop = UDim.new(0, top or left or 4)
+	pad.PaddingBottom = UDim.new(0, bottom or top or left or 4)
+	pad.Parent = target
+	return pad
+end
+
 function Library.EnableAntiAFK()
 	if Library_Function._antiAfkConn then
 		return
@@ -247,6 +281,9 @@ function Library.ToggleVisible()
 end
 
 function Library.SetToggleKey(key)
+	if type(key) == "string" then
+		key = Enum.KeyCode[key] or Enum.UserInputType[key]
+	end
 	Library_Function._toggleKey = key
 	if Library_Function._toggleConn then
 		Library_Function._toggleConn:Disconnect()
@@ -369,10 +406,16 @@ end
 
 function Library.SaveProfile(name)
 	local profile = normalizeProfileName(name)
-	if not isfolder("Xero Hub") then
-		makefolder("Xero Hub")
+	local ok, err = pcall(function()
+		if not isfolder("Xero Hub") then
+			makefolder("Xero Hub")
+		end
+		writefile("Xero Hub/" .. profile .. ".json", HttpService:JSONEncode(CorrectTable(SettingsRac)))
+	end)
+	if not ok then
+		warn(err)
+		return nil
 	end
-	writefile("Xero Hub/" .. profile .. ".json", HttpService:JSONEncode(CorrectTable(SettingsRac)))
 	return profile
 end
 
@@ -386,6 +429,9 @@ function Library.LoadProfile(name)
 		return HttpService:JSONDecode(readfile(path))
 	end)
 	if not ok or type(data) ~= "table" then
+		if not ok then
+			warn(data)
+		end
 		return false
 	end
 	local fixed = DCorrectTable(data)
@@ -749,7 +795,8 @@ end
 		getgenv().MainDesc = Setting.Desc or ""
 		local builtInSettings = Setting.BuiltInSettings ~= false
 		if getgenv().AutoLoadConfig then
-			local autoName = getgenv().AutoLoadConfigName or "Default"
+			local autoName = normalizeProfileName(getgenv().AutoLoadConfigName or "Default")
+			getgenv().AutoLoadConfigName = autoName
 			Library.LoadProfile(autoName)
 		end
 		if Setting.AntiAFK or getgenv().AntiAFK then
@@ -826,8 +873,19 @@ end
 		Main.Size = UDim2.new(0, 630, 0, 360)
 
 		Library_Function._mainFrame = Main
-		if not builtInSettings and (Setting.ToggleKey or getgenv().ToggleKey) then
-			Library.SetToggleKey(Setting.ToggleKey or getgenv().ToggleKey)
+		local initialToggleKey = Setting.ToggleKey
+		if initialToggleKey == nil then
+			initialToggleKey = getgenv().ToggleKey
+		end
+		if type(initialToggleKey) == "string" then
+			initialToggleKey = Enum.KeyCode[initialToggleKey] or Enum.UserInputType[initialToggleKey]
+		end
+		if initialToggleKey == nil then
+			initialToggleKey = Enum.KeyCode.RightControl
+		end
+		if initialToggleKey ~= false then
+			getgenv().ToggleKey = initialToggleKey
+			Library.SetToggleKey(initialToggleKey)
 		end
 		if Setting.AutoScale ~= nil or getgenv().AutoScaleUI ~= nil then
 			Library.EnableAutoScale(Setting.AutoScale ~= nil and Setting.AutoScale or getgenv().AutoScaleUI)
@@ -3976,6 +4034,7 @@ end
 							local Default = Setting.Default or Setting.Key
 							local Type = tostring(Default):match("UserInputType") and "UserInputType" or "KeyCode"
 							local Callback = Callback or function() end
+							local OnChanged = Setting.Changed
 							
 							KeyCode = tostring(KeyCode):gsub("Enum.UserInputType.", "")
 							KeyCode = tostring(KeyCode):gsub("Enum.KeyCode.", "")
@@ -4076,23 +4135,22 @@ end
 			
 								Bindkey.Text = "...";
 			
+								local function applyNewKey(newKey, newType, displayText)
+									Bindkey.Text = displayText
+									spawn(function()
+										wait(0.1)
+										Default = newKey
+										Type = newType
+										safeCall(OnChanged, Default, Type)
+									end)
+								end
+			
 								Connection = game:GetService("UserInputService").InputBegan:Connect(function(i)
 									if WhitelistedType[i.UserInputType] then
-										Bindkey.Text = WhitelistedType[i.UserInputType];
-										spawn(function()
-											wait(0.1)
-											Default = i.UserInputType;
-											Type = "UserInputType";
-										end);
+										applyNewKey(i.UserInputType, "UserInputType", WhitelistedType[i.UserInputType])
 									elseif i.KeyCode ~= Enum.KeyCode.Unknown then
-										Bindkey.Text = tostring(i.KeyCode):gsub("Enum.KeyCode.", "");
-										spawn(function()
-											wait(0.1)
-											Default = i.KeyCode;
-											Type = "KeyCode";
-										end);
-									end;
-			
+										applyNewKey(i.KeyCode, "KeyCode", tostring(i.KeyCode):gsub("Enum.KeyCode.", ""))
+									end
 			
 									Connection:Disconnect();
 								end);
@@ -4256,6 +4314,10 @@ end
 								Boxxx.Text = Value
 								safeCall(Callback,Value)
 							end 
+	
+							function textbox_function.SetValueSilent(Value)
+								Boxxx.Text = Value
+							end
 	
 							return textbox_function;
 	
@@ -4513,28 +4575,34 @@ end
 				getgenv().AutoHideOnLaunch = val
 			end)
 
-			local toggleKey = Setting.ToggleKey or getgenv().ToggleKey or Enum.KeyCode.RightControl
+			local toggleKey = getgenv().ToggleKey or Setting.ToggleKey or Enum.KeyCode.RightControl
 			uiSection.CreateBind({
 				Title = "Toggle UI Key",
 				Key = toggleKey,
-				Default = toggleKey
-			}, function()
-				Library.ToggleVisible()
-			end)
+				Default = toggleKey,
+				Changed = function(newKey)
+					getgenv().ToggleKey = newKey
+					Library.SetToggleKey(newKey)
+				end
+			}, function() end)
 
 			uiSection.CreateButton({Title = "Reset Theme"}, function()
 				Library.ResetTheme()
 			end)
 
 			local profileSection = settingsPage.CreateSection("Profiles")
-			local profileName = "Default"
-			profileSection.CreateBox({
+			local profileName = normalizeProfileName(getgenv().AutoLoadConfigName or "Default")
+			local profileBox
+			profileBox = profileSection.CreateBox({
 				Title = "Profile Name",
 				Placeholder = "Default",
 				Default = profileName
 			}, function(val)
-				profileName = val
-				getgenv().AutoLoadConfigName = val
+				profileName = normalizeProfileName(val)
+				getgenv().AutoLoadConfigName = profileName
+				if profileBox and profileBox.SetValueSilent then
+					profileBox.SetValueSilent(profileName)
+				end
 			end)
 			profileSection.CreateToggle({
 				Title = "Auto Load Config",
@@ -4542,7 +4610,11 @@ end
 				Default = getgenv().AutoLoadConfig == true
 			}, function(val)
 				getgenv().AutoLoadConfig = val
+				profileName = normalizeProfileName(profileName)
 				getgenv().AutoLoadConfigName = profileName
+				if profileBox and profileBox.SetValueSilent then
+					profileBox.SetValueSilent(profileName)
+				end
 				if val then
 					local ok = Library.LoadProfile(profileName)
 					if ok then
@@ -4553,10 +4625,24 @@ end
 				end
 			end)
 			profileSection.CreateButton({Title = "Save Profile"}, function()
+				profileName = normalizeProfileName(profileName)
+				getgenv().AutoLoadConfigName = profileName
+				if profileBox and profileBox.SetValueSilent then
+					profileBox.SetValueSilent(profileName)
+				end
 				local name = Library.SaveProfile(profileName)
-				Library.CreateNoti({Title = "Profile", Desc = "Saved: " .. name, ShowTime = 3})
+				if name then
+					Library.CreateNoti({Title = "Profile", Desc = "Saved: " .. name, ShowTime = 3})
+				else
+					Library.CreateNoti({Title = "Profile", Desc = "Save failed: " .. profileName, ShowTime = 4})
+				end
 			end)
 			profileSection.CreateButton({Title = "Load Profile"}, function()
+				profileName = normalizeProfileName(profileName)
+				getgenv().AutoLoadConfigName = profileName
+				if profileBox and profileBox.SetValueSilent then
+					profileBox.SetValueSilent(profileName)
+				end
 				local ok = Library.LoadProfile(profileName)
 				if ok then
 					Library.CreateNoti({Title = "Profile", Desc = "Loaded: " .. profileName, ShowTime = 3})
