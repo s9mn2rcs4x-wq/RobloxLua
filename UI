@@ -34,9 +34,13 @@ if getgenv().Tvk then
 		["Slider Line Color"] = Color3.fromRGB(58, 58, 58),
 		["Slider Highlight Color"] = Color3.fromRGB(255, 90, 90),
 		["Tween Animation 1 Speed"] = 0.25,
-		["Tween Animation 2 Speed"] = 0.5,
-		["Tween Animation 3 Speed"] = 0.1,
-	}
+	["Tween Animation 2 Speed"] = 0.5,
+	["Tween Animation 3 Speed"] = 0.1,
+}
+local DefaultUIColor = {}
+for k,v in pairs(IndexUIColor) do
+	DefaultUIColor[k] = v
+end
 	local UpdateCallBack = {}
 	for k,v in pairs(IndexUIColor) do 
 		UpdateCallBack[k] = {}
@@ -151,7 +155,6 @@ local TweenService = game:GetService('TweenService')
 local uis = game:GetService("UserInputService")
 local GuiService = game:GetService("GuiService")
 local Players = game:GetService("Players")
-local VirtualUser = game:GetService("VirtualUser")
 
 function Library.EnableAntiAFK()
 	if Library_Function._antiAfkConn then
@@ -161,11 +164,30 @@ function Library.EnableAntiAFK()
 	if not player then
 		return
 	end
+	if typeof(getconnections) == "function" then
+		local idleCons = getconnections(player.Idled)
+		for _, conn in ipairs(idleCons) do
+			pcall(function()
+				conn:Disable()
+			end)
+		end
+		Library_Function._antiAfkDisabled = idleCons
+		return
+	end
 	Library_Function._antiAfkConn = player.Idled:Connect(function()
-		pcall(function()
-			VirtualUser:CaptureController()
-			VirtualUser:ClickButton2(Vector2.new())
-		end)
+		local char = player.Character
+		local hum = char and char:FindFirstChildOfClass("Humanoid")
+		if hum then
+			local prev = hum:GetState()
+			hum:ChangeState(Enum.HumanoidStateType.RunningNoPhysics)
+			task.defer(function()
+				if hum then
+					pcall(function()
+						hum:ChangeState(prev)
+					end)
+				end
+			end)
+		end
 	end)
 end
 
@@ -174,10 +196,216 @@ function Library.DisableAntiAFK()
 		Library_Function._antiAfkConn:Disconnect()
 		Library_Function._antiAfkConn = nil
 	end
+	if Library_Function._antiAfkDisabled then
+		for _, conn in ipairs(Library_Function._antiAfkDisabled) do
+			pcall(function()
+				conn:Enable()
+			end)
+		end
+		Library_Function._antiAfkDisabled = nil
+	end
+end
+
+if getgenv().ClickFXEnabled == nil then
+	getgenv().ClickFXEnabled = true
+end
+
+function Library.SetClickFXEnabled(enabled)
+	getgenv().ClickFXEnabled = enabled ~= false
+end
+
+function Library.SetVisible(visible)
+	if Library_Function.Gui then
+		Library_Function.Gui.Enabled = visible
+	end
+	if Library_Function.NotiGui then
+		Library_Function.NotiGui.Enabled = visible
+	end
+end
+
+function Library.ToggleVisible()
+	local state = true
+	if Library_Function.Gui then
+		state = not Library_Function.Gui.Enabled
+	end
+	Library.SetVisible(state)
+end
+
+function Library.SetToggleKey(key)
+	Library_Function._toggleKey = key
+	if Library_Function._toggleConn then
+		Library_Function._toggleConn:Disconnect()
+		Library_Function._toggleConn = nil
+	end
+	if not key then
+		return
+	end
+	Library_Function._toggleConn = uis.InputBegan:Connect(function(input, gameProcessed)
+		if gameProcessed then
+			return
+		end
+		if input.KeyCode == key or input.UserInputType == key then
+			Library.ToggleVisible()
+		end
+	end)
+end
+
+local function ensureUIScale()
+	if Library_Function._uiScale then
+		return Library_Function._uiScale
+	end
+	if Library_Function._mainFrame then
+		local uiScale = Instance.new("UIScale")
+		uiScale.Parent = Library_Function._mainFrame
+		Library_Function._uiScale = uiScale
+		return uiScale
+	end
+	return nil
+end
+
+local function applyAutoScale()
+	if not Library_Function._autoScaleEnabled then
+		return
+	end
+	local uiScale = ensureUIScale()
+	if not uiScale then
+		return
+	end
+	local cam = workspace.CurrentCamera
+	if not cam then
+		return
+	end
+	local vp = cam.ViewportSize
+	local scale = math.min(vp.X / 720, vp.Y / 420)
+	scale = math.clamp(scale, 0.8, 1.05)
+	uiScale.Scale = scale
+end
+
+function Library.SetUIScale(scale)
+	Library_Function._autoScaleEnabled = false
+	local uiScale = ensureUIScale()
+	if not uiScale then
+		return
+	end
+	uiScale.Scale = math.clamp(scale or 1, 0.5, 1.5)
+end
+
+function Library.EnableAutoScale(enabled)
+	Library_Function._autoScaleEnabled = enabled ~= false
+	if not Library_Function._autoScaleEnabled then
+		if Library_Function._autoScaleConn then
+			Library_Function._autoScaleConn:Disconnect()
+			Library_Function._autoScaleConn = nil
+		end
+		if Library_Function._autoScaleCamConn then
+			Library_Function._autoScaleCamConn:Disconnect()
+			Library_Function._autoScaleCamConn = nil
+		end
+		return
+	end
+	applyAutoScale()
+	local function hookCamera()
+		local cam = workspace.CurrentCamera
+		if not cam then
+			return
+		end
+		if Library_Function._autoScaleConn then
+			Library_Function._autoScaleConn:Disconnect()
+		end
+		Library_Function._autoScaleConn = cam:GetPropertyChangedSignal("ViewportSize"):Connect(function()
+			applyAutoScale()
+		end)
+	end
+	if not Library_Function._autoScaleCamConn then
+		Library_Function._autoScaleCamConn = workspace:GetPropertyChangedSignal("CurrentCamera"):Connect(function()
+			if Library_Function._autoScaleEnabled then
+				hookCamera()
+				applyAutoScale()
+			end
+		end)
+	end
+	hookCamera()
+end
+
+local function normalizeProfileName(name)
+	local cleaned = tostring(name or "Default")
+	cleaned = cleaned:gsub("[^%w%-%_ ]", "")
+	cleaned = cleaned:gsub("%s+", " "):gsub("^%s+", ""):gsub("%s+$", "")
+	if cleaned == "" then
+		cleaned = "Default"
+	end
+	return cleaned
+end
+
+function Library.ResetTheme()
+	for k,v in pairs(DefaultUIColor) do
+		getgenv().UIColor[k] = v
+		if SettingsRac[k] then
+			SettingsRac[k].Rainbow = false
+			if SettingsRac[k].Breathing then
+				SettingsRac[k].Breathing.Toggle = false
+				SettingsRac[k].Breathing.Color1 = Color3.new()
+				SettingsRac[k].Breathing.Color2 = Color3.new()
+			end
+		end
+	end
+	SaveCustomUISettings()
+end
+
+function Library.SaveProfile(name)
+	local profile = normalizeProfileName(name)
+	if not isfolder("Xero Hub") then
+		makefolder("Xero Hub")
+	end
+	writefile("Xero Hub/" .. profile .. ".json", HttpService:JSONEncode(CorrectTable(SettingsRac)))
+	return profile
+end
+
+function Library.LoadProfile(name)
+	local profile = normalizeProfileName(name)
+	local path = "Xero Hub/" .. profile .. ".json"
+	if not isfile(path) then
+		return false
+	end
+	local ok, data = pcall(function()
+		return HttpService:JSONDecode(readfile(path))
+	end)
+	if not ok or type(data) ~= "table" then
+		return false
+	end
+	local fixed = DCorrectTable(data)
+	for k,v in pairs(fixed) do
+		SettingsRac[k] = v
+	end
+	for k,v in pairs(SettingsRac) do
+		if v and v.Color then
+			getgenv().UIColor[k] = v.Color
+		end
+	end
+	SaveCustomUISettings()
+	return true
+end
+
+function Library.ListProfiles()
+	if not isfolder("Xero Hub") or not listfiles then
+		return {}
+	end
+	local out = {}
+	for _, filePath in ipairs(listfiles("Xero Hub")) do
+		local name = filePath:match("([^\\/]+)%.json$")
+		if name and (name .. ".json") ~= SaveCustomFileName then
+			table.insert(out, name)
+		end
+	end
+	table.sort(out)
+	return out
 end
 
 --Button Effect
 function Library_Function.ButtonEffect()
+	if getgenv().ClickFXEnabled == false then
+		return
+	end
 	local effectGui = Library_Function.EffectGui
 	if not effectGui then
 		effectGui = Instance.new("ScreenGui")
@@ -520,6 +748,7 @@ end
 	
 		local TitleNameMain = (Setting.Title ~= nil and tostring(Setting.Title)) or "Xero Hub"
 		getgenv().MainDesc = Setting.Desc or ""
+		local builtInSettings = Setting.BuiltInSettings ~= false
 		if Setting.AntiAFK or getgenv().AntiAFK then
 			Library.EnableAntiAFK()
 		end
@@ -593,7 +822,15 @@ end
 		Main.Position = UDim2.new(0.5, 0, 0.5, 0)
 		Main.AnchorPoint = Vector2.new(0.5, 0.5)
 		Main.Size = UDim2.new(0, 630, 0, 360)
-	
+
+		Library_Function._mainFrame = Main
+		if not builtInSettings and (Setting.ToggleKey or getgenv().ToggleKey) then
+			Library.SetToggleKey(Setting.ToggleKey or getgenv().ToggleKey)
+		end
+		if Setting.AutoScale ~= nil or getgenv().AutoScaleUI ~= nil then
+			Library.EnableAutoScale(Setting.AutoScale ~= nil and Setting.AutoScale or getgenv().AutoScaleUI)
+		end
+
 		makeDraggable(Main, Main)
 	
 		maingui.Name = "maingui"
@@ -4249,6 +4486,74 @@ end
 	
 			return Page_Function
 	
+		end
+
+		if builtInSettings then
+			local settingsPage = Main_Function.CreatePage({Page_Name = "Settings", Page_Title = "Settings"})
+			local uiSection = settingsPage.CreateSection("UI")
+			local antiDefault = Library_Function._antiAfkConn ~= nil or Setting.AntiAFK or getgenv().AntiAFK or false
+			uiSection.CreateToggle({
+				Title = "Anti-AFK",
+				Desc = "Prevent idle kick",
+				Default = antiDefault
+			}, function(val)
+				if val then
+					Library.EnableAntiAFK()
+				else
+					Library.DisableAntiAFK()
+				end
+			end)
+
+			uiSection.CreateToggle({
+				Title = "Click Effects",
+				Desc = "Enable click animations",
+				Default = getgenv().ClickFXEnabled ~= false
+			}, function(val)
+				Library.SetClickFXEnabled(val)
+			end)
+
+			uiSection.CreateToggle({
+				Title = "Auto Scale",
+				Desc = "Scale UI to screen size",
+				Default = Library_Function._autoScaleEnabled == true
+			}, function(val)
+				Library.EnableAutoScale(val)
+			end)
+
+			local toggleKey = Setting.ToggleKey or getgenv().ToggleKey or Enum.KeyCode.RightControl
+			uiSection.CreateBind({
+				Title = "Toggle UI Key",
+				Key = toggleKey,
+				Default = toggleKey
+			}, function()
+				Library.ToggleVisible()
+			end)
+
+			uiSection.CreateButton({Title = "Reset Theme"}, function()
+				Library.ResetTheme()
+			end)
+
+			local profileSection = settingsPage.CreateSection("Profiles")
+			local profileName = "Default"
+			profileSection.CreateBox({
+				Title = "Profile Name",
+				Placeholder = "Default",
+				Default = profileName
+			}, function(val)
+				profileName = val
+			end)
+			profileSection.CreateButton({Title = "Save Profile"}, function()
+				local name = Library.SaveProfile(profileName)
+				Library.CreateNoti({Title = "Profile", Desc = "Saved: " .. name, ShowTime = 3})
+			end)
+			profileSection.CreateButton({Title = "Load Profile"}, function()
+				local ok = Library.LoadProfile(profileName)
+				if ok then
+					Library.CreateNoti({Title = "Profile", Desc = "Loaded: " .. profileName, ShowTime = 3})
+				else
+					Library.CreateNoti({Title = "Profile", Desc = "Not found: " .. profileName, ShowTime = 4})
+				end
+			end)
 		end
 	
 		return Main_Function
