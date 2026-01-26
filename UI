@@ -95,6 +95,9 @@ if getgenv().Tvk then
 	end
 	
 	function ReadCustomUISetting() 
+		if getgenv().ResetUITheme then
+			return nil
+		end
 		local s,e = pcall(function() 
 			local HttpService = game:GetService("HttpService")
 			if not isfolder("Xero Hub") then
@@ -108,9 +111,17 @@ if getgenv().Tvk then
 			return ReadCustomUISetting()
 		end
 	end
-	SettingsRac=DCorrectTable(ReadCustomUISetting())
-	for k,v in pairs(SettingsRac) do 
-		IndexUIColor[k]=v.Color
+	local savedSettings = ReadCustomUISetting()
+	if savedSettings then
+		SettingsRac = DCorrectTable(savedSettings)
+		for k,v in pairs(SettingsRac) do 
+			IndexUIColor[k]=v.Color
+		end
+	else
+		SaveCustomUISettings()
+		if getgenv().ResetUITheme then
+			getgenv().ResetUITheme = nil
+		end
 	end
 	if not getgenv().ractvkretarddumb then
 		spawn(function() 
@@ -139,6 +150,31 @@ if getgenv().Tvk then
 local TweenService = game:GetService('TweenService')
 local uis = game:GetService("UserInputService")
 local GuiService = game:GetService("GuiService")
+local Players = game:GetService("Players")
+local VirtualUser = game:GetService("VirtualUser")
+
+function Library.EnableAntiAFK()
+	if Library_Function._antiAfkConn then
+		return
+	end
+	local player = Players.LocalPlayer
+	if not player then
+		return
+	end
+	Library_Function._antiAfkConn = player.Idled:Connect(function()
+		pcall(function()
+			VirtualUser:CaptureController()
+			VirtualUser:ClickButton2(Vector2.new())
+		end)
+	end)
+end
+
+function Library.DisableAntiAFK()
+	if Library_Function._antiAfkConn then
+		Library_Function._antiAfkConn:Disconnect()
+		Library_Function._antiAfkConn = nil
+	end
+end
 
 --Button Effect
 function Library_Function.ButtonEffect()
@@ -482,8 +518,11 @@ end
 	
 	function Library.CreateMain(Setting)
 	
-		local TitleNameMain = tostring(Setting.Title) or "Xero Hub"
+		local TitleNameMain = (Setting.Title ~= nil and tostring(Setting.Title)) or "Xero Hub"
 		getgenv().MainDesc = Setting.Desc or ""
+		if Setting.AntiAFK or getgenv().AntiAFK then
+			Library.EnableAntiAFK()
+		end
 	
 		local djtmemay = false
 		cac = false
