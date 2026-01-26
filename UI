@@ -635,8 +635,17 @@ end
 	
 	function Library.CreateNoti(Setting)
 		getgenv().TitleNameNoti = Setting.Title or ""; 
-		local Desc = Setting.Desc; 
-		local Timeshow = Setting.ShowTime or 10;
+		local TitleText = Setting.Title
+		local DescText = Setting.Desc
+		local Timeshow = Setting.ShowTime or 10
+		local bodyText = ""
+		if TitleText ~= nil and DescText ~= nil then
+			bodyText = tostring(TitleText) .. "\n" .. tostring(DescText)
+		elseif DescText ~= nil then
+			bodyText = tostring(DescText)
+		elseif TitleText ~= nil then
+			bodyText = tostring(TitleText)
+		end
 	
 		local NotiFrame = Instance.new("Frame")
 		local Noticontainer = Instance.new("Frame")
@@ -683,14 +692,14 @@ end
 		local colorG = tostring(Library_Function.Getcolor(getgenv().UIColor['Title Text Color'])[2])
 		local colorB = tostring(Library_Function.Getcolor(getgenv().UIColor['Title Text Color'])[3])
 		local color = colorR .. ',' .. colorG .. ',' .. colorB
-		TextLabelNoti.Text = "<font color=\"rgb(" .. color .. ")\">Xero Hub</font> "..getgenv().TitleNameNoti
+		TextLabelNoti.Text = "<font color=\"rgb(" .. color .. ")\">Xero Hub</font>"
 	
 		table.insert(UpdateCallBack["Title Text Color"],function() 
 			local colorR = tostring(Library_Function.Getcolor(getgenv().UIColor['Title Text Color'])[1])
 			local colorG = tostring(Library_Function.Getcolor(getgenv().UIColor['Title Text Color'])[2])
 			local colorB = tostring(Library_Function.Getcolor(getgenv().UIColor['Title Text Color'])[3])
 			local color = colorR .. ',' .. colorG .. ',' .. colorB
-			TextLabelNoti.Text = "<font color=\"rgb(" .. color .. ")\">Xero Hub</font> "..getgenv().TitleNameNoti
+			TextLabelNoti.Text = "<font color=\"rgb(" .. color .. ")\">Xero Hub</font>"
 		end)
 		
 		TextLabelNoti.Name = "TextLabelNoti"
@@ -739,7 +748,7 @@ end
 		TextButton.TextColor3 = Color3.fromRGB(0, 0, 0)
 		TextButton.TextSize = 14.000
 	
-		if Desc then
+		if bodyText ~= "" then
 			TextLabelNoti2.Name = 'TextColor'
 			TextLabelNoti2.Parent = Noticontainer
 			TextLabelNoti2.BackgroundColor3 = Color3.fromRGB(230, 230, 230)
@@ -747,7 +756,7 @@ end
 			TextLabelNoti2.Position = UDim2.new(0, 10, 0, 35)
 			TextLabelNoti2.Size = UDim2.new(1, -15, 0, 0)
 			TextLabelNoti2.Font = Enum.Font.GothamBold
-			TextLabelNoti2.Text = Desc
+			TextLabelNoti2.Text = bodyText
 			TextLabelNoti2.TextSize = 14.000
 			TextLabelNoti2.TextXAlignment = Enum.TextXAlignment.Left
 			TextLabelNoti2.RichText = true
