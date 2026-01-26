@@ -1,7 +1,12 @@
-if getgenv().Tvk then 
-		if game.CoreGui:FindFirstChild("Xero Hub GUI") then for i, v in ipairs(game.CoreGui:GetChildren()) do if v.Name == "Xero Hub GUI" then v:Destroy() end end end
+do
+	local coreGui = game:GetService("CoreGui")
+	for _, v in ipairs(coreGui:GetChildren()) do
+		if v.Name == "Xero Hub GUI" or v.Name == "Xero Hub Notification" or v.Name == "Xero Hub ClickFX" then
+			v:Destroy()
+		end
 	end
-	getgenv().Tvk = true
+end
+getgenv().Tvk = true
 	
 	local IndexUIColor = {
 		["Border Color"] = Color3.fromRGB(255, 59, 59),
@@ -147,6 +152,7 @@ end
 		end,
 		__index = IndexUIColor
 	})
+	getgenv().UIColor["Logo Image"] = "rbxassetid://134526099140925"
 	
 	local currcolor = {}
 	local Library = {};
@@ -624,7 +630,7 @@ end
 		Ruafimg.BackgroundTransparency = 1.000
 		Ruafimg.Position = UDim2.new(0, 10, 0, 0)
 		Ruafimg.Size = UDim2.new(0, 25, 0, 25)
-		Ruafimg.Image = getgenv().UIColor["Logo Image"]
+		Ruafimg.Image = Library_Function.GetIMG(getgenv().UIColor["Logo Image"])
 		table.insert(UpdateCallBack["Logo Image"], function() 
 			Ruafimg.Image = Library_Function.GetIMG(getgenv().UIColor["Logo Image"])
 		end)
@@ -1016,9 +1022,9 @@ end
 		Ruafimg.AnchorPoint = Vector2.new(0, 0.5)
 		Ruafimg.Position = UDim2.new(0, 5, 0.5, 0)
 		Ruafimg.Size = UDim2.new(0, 25, 0, 25)
-		Ruafimg.Image = getgenv().UIColor["Logo Image"]
+		Ruafimg.Image = Library_Function.GetIMG(getgenv().UIColor["Logo Image"])
 		table.insert(UpdateCallBack["Logo Image"],function() 
-			Ruafimg.Image = getgenv().UIColor["Logo Image"]
+			Ruafimg.Image = Library_Function.GetIMG(getgenv().UIColor["Logo Image"])
 		end)
 		
 		TextLabelMain.Name = "TextLabelMain"
@@ -3443,7 +3449,10 @@ end
 	
 							local Title = tostring(Setting.Title)
 							local List = Setting.List
-							local Search = Setting.Search or false
+							local Search = Setting.Search
+							if Search == nil then
+								Search = true
+							end
 							local Selected = Setting.Selected or false
 							local Default = Setting.Default
 							local Callback = Callback or function() end
@@ -3466,7 +3475,6 @@ end
 							local Dropdowntitle; 
 							if Search then 
 								Dropdowntitle = Instance.new("TextBox")
-								DropdownButton.Visible = false
 							else
 								Dropdowntitle = Instance.new("TextLabel")
 							end
@@ -3578,6 +3586,11 @@ end
 							DropdownButton.Text = ""
 							DropdownButton.TextColor3 = Color3.fromRGB(230, 230, 230)
 							DropdownButton.TextSize = 14.000
+							if Search then
+								DropdownButton.AnchorPoint = Vector2.new(1, 0.5)
+								DropdownButton.Position = UDim2.new(1, -5, 0.5, 0)
+								DropdownButton.Size = UDim2.new(0, 25, 0, 25)
+							end
 	
 							Dropdownlisttt.Name = "Dropdownlisttt"
 							Dropdownlisttt.Parent = Dropdownbg
