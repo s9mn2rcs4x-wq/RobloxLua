@@ -730,22 +730,17 @@ end
 	end
 	
 	function Library.CreateNoti(Setting)
-		getgenv().TitleNameNoti = Setting.Title or ""; 
-		local TitleText = Setting.Title
-		local DescText = Setting.Desc
-		local Timeshow = Setting.ShowTime or 10
-		local bodyText = ""
-		if TitleText ~= nil and DescText ~= nil then
-			bodyText = tostring(TitleText) .. "\n" .. tostring(DescText)
-		elseif DescText ~= nil then
-			bodyText = tostring(DescText)
-		elseif TitleText ~= nil then
-			bodyText = tostring(TitleText)
-		end
+		getgenv().TitleNameNoti = Setting.Title or ""
+		local TitleText = Setting.Title or "Notification"
+		local DescText = Setting.Desc or ""
+		local Timeshow = Setting.ShowTime or 6
+		local hasDesc = DescText ~= nil and tostring(DescText) ~= ""
 	
 		local NotiFrame = Instance.new("Frame")
 		local Noticontainer = Instance.new("Frame")
 		local UICorner = Instance.new("UICorner")
+		local UIStroke = Instance.new("UIStroke")
+		local Accent = Instance.new("Frame")
 		local Topnoti = Instance.new("Frame")
 		local TextLabelNoti = Instance.new("TextLabel")
 		local CloseContainer = Instance.new("Frame")
@@ -755,8 +750,7 @@ end
 	
 		NotiFrame.Name = "NotiFrame"
 		NotiFrame.Parent = NotiContainer
-		NotiFrame.BackgroundColor3 = Color3.fromRGB(230, 230, 230)
-		NotiFrame.BackgroundTransparency = 1.000
+		NotiFrame.BackgroundTransparency = 1
 		NotiFrame.ClipsDescendants = true
 		NotiFrame.Position = UDim2.new(0, 0, 0, 0)
 		NotiFrame.Size = UDim2.new(1, 0, 0, 0)
@@ -764,52 +758,53 @@ end
 	
 		Noticontainer.Name = "Noticontainer"
 		Noticontainer.Parent = NotiFrame
-		Noticontainer.Position = UDim2.new(1, 0, 0, 0)
-		Noticontainer.Size = UDim2.new(1, 0, 1, 6)
+		Noticontainer.Position = UDim2.new(1, 12, 0, 0)
+		Noticontainer.Size = UDim2.new(1, 0, 1, 8)
 		Noticontainer.AutomaticSize = Enum.AutomaticSize.Y
-		Noticontainer.BackgroundColor3 = getgenv().UIColor["Background 3 Color"]
-		table.insert(UpdateCallBack["Background 3 Color"],function() 
-			Noticontainer.BackgroundColor3 = getgenv().UIColor["Background 3 Color"]
+		Noticontainer.BackgroundColor3 = getgenv().UIColor["Background 2 Color"]
+		Noticontainer.BackgroundTransparency = 1
+		table.insert(UpdateCallBack["Background 2 Color"],function() 
+			Noticontainer.BackgroundColor3 = getgenv().UIColor["Background 2 Color"]
 		end)
 	
-		UICorner.CornerRadius = UDim.new(0, 4)
+		UICorner.CornerRadius = UDim.new(0, 6)
 		UICorner.Parent = Noticontainer
+	
+		UIStroke.Parent = Noticontainer
+		UIStroke.Thickness = 1
+		UIStroke.Transparency = 0.55
+		UIStroke.Color = getgenv().UIColor["Border Color"]
+		table.insert(UpdateCallBack["Border Color"],function()
+			UIStroke.Color = getgenv().UIColor["Border Color"]
+		end)
+	
+		Accent.Name = "Accent"
+		Accent.Parent = Noticontainer
+		Accent.BackgroundColor3 = getgenv().UIColor["Page Selected Color"]
+		Accent.Size = UDim2.new(0, 3, 1, 0)
+		Accent.BackgroundTransparency = 1
+		table.insert(UpdateCallBack["Page Selected Color"],function()
+			Accent.BackgroundColor3 = getgenv().UIColor["Page Selected Color"]
+		end)
 	
 		Topnoti.Name = "Topnoti"
 		Topnoti.Parent = Noticontainer
-		Topnoti.BackgroundColor3 = Color3.fromRGB(230, 230, 230)
-		Topnoti.BackgroundTransparency = 1.000
-		Topnoti.Position = UDim2.new(0, 0, 0, 5)
-		Topnoti.Size = UDim2.new(1, 0, 0, 25)
+		Topnoti.BackgroundTransparency = 1
+		Topnoti.Position = UDim2.new(0, 10, 0, 6)
+		Topnoti.Size = UDim2.new(1, -20, 0, 22)
 	
-		-- logo removed; use title text only
-		
-		local colorR = tostring(Library_Function.Getcolor(getgenv().UIColor['Title Text Color'])[1])
-		local colorG = tostring(Library_Function.Getcolor(getgenv().UIColor['Title Text Color'])[2])
-		local colorB = tostring(Library_Function.Getcolor(getgenv().UIColor['Title Text Color'])[3])
-		local color = colorR .. ',' .. colorG .. ',' .. colorB
-		TextLabelNoti.Text = "<font color=\"rgb(" .. color .. ")\">Xero Hub</font>"
-	
-		table.insert(UpdateCallBack["Title Text Color"],function() 
-			local colorR = tostring(Library_Function.Getcolor(getgenv().UIColor['Title Text Color'])[1])
-			local colorG = tostring(Library_Function.Getcolor(getgenv().UIColor['Title Text Color'])[2])
-			local colorB = tostring(Library_Function.Getcolor(getgenv().UIColor['Title Text Color'])[3])
-			local color = colorR .. ',' .. colorG .. ',' .. colorB
-			TextLabelNoti.Text = "<font color=\"rgb(" .. color .. ")\">Xero Hub</font>"
-		end)
-		
 		TextLabelNoti.Name = "TextLabelNoti"
 		TextLabelNoti.Parent = Topnoti
-		TextLabelNoti.BackgroundColor3 = Color3.fromRGB(230, 230, 230)
-		TextLabelNoti.BackgroundTransparency = 1.000
-		TextLabelNoti.Position = UDim2.new(0, 10, 0, 0)
-		TextLabelNoti.Size = UDim2.new(1, -40, 1, 0)
-		TextLabelNoti.Font = Enum.Font.GothamBold
-		TextLabelNoti.TextSize = 14.000
-		TextLabelNoti.TextWrapped = true
+		TextLabelNoti.BackgroundTransparency = 1
+		TextLabelNoti.Position = UDim2.new(0, 0, 0, 0)
+		TextLabelNoti.Size = UDim2.new(1, -26, 1, 0)
+		TextLabelNoti.Font = Enum.Font.GothamSemibold
+		TextLabelNoti.Text = tostring(TitleText)
+		TextLabelNoti.TextSize = 14
 		TextLabelNoti.TextXAlignment = Enum.TextXAlignment.Left
-		TextLabelNoti.RichText = true
 		TextLabelNoti.TextColor3 = getgenv().UIColor["GUI Text Color"]
+		TextLabelNoti.TextTransparency = 1
+		TextLabelNoti.TextTruncate = Enum.TextTruncate.AtEnd
 		table.insert(UpdateCallBack["GUI Text Color"], function() 
 			TextLabelNoti.TextColor3 = getgenv().UIColor["GUI Text Color"]
 		end)
@@ -817,60 +812,74 @@ end
 		CloseContainer.Name = "CloseContainer"
 		CloseContainer.Parent = Topnoti
 		CloseContainer.AnchorPoint = Vector2.new(1, 0.5)
-		CloseContainer.BackgroundColor3 = Color3.fromRGB(230, 230, 230)
-		CloseContainer.BackgroundTransparency = 1.000
-		CloseContainer.Position = UDim2.new(1, -4, 0.5, 0)
-		CloseContainer.Size = UDim2.new(0, 22, 0, 22)
+		CloseContainer.BackgroundTransparency = 1
+		CloseContainer.Position = UDim2.new(1, 0, 0.5, 0)
+		CloseContainer.Size = UDim2.new(0, 18, 0, 18)
 	
 		CloseImage.Name = "CloseImage"
 		CloseImage.Parent = CloseContainer
-		CloseImage.BackgroundColor3 = Color3.fromRGB(230, 230, 230)
-		CloseImage.BackgroundTransparency = 1.000
+		CloseImage.BackgroundTransparency = 1
 		CloseImage.Size = UDim2.new(1, 0, 1, 0)
 		CloseImage.Image = "rbxassetid://3926305904"
 		CloseImage.ImageRectOffset = Vector2.new(284, 4)
 		CloseImage.ImageRectSize = Vector2.new(24, 24)
 		CloseImage.ImageColor3 = getgenv().UIColor["Search Icon Color"]
+		CloseImage.ImageTransparency = 1
 		table.insert(UpdateCallBack["Search Icon Color"],function() 
 			CloseImage.ImageColor3 = getgenv().UIColor["Search Icon Color"]
 		end)
 	
 		TextButton.Parent = CloseContainer
-		TextButton.BackgroundColor3 = Color3.fromRGB(230, 230, 230)
-		TextButton.BackgroundTransparency = 1.000
+		TextButton.BackgroundTransparency = 1
 		TextButton.Size = UDim2.new(1, 0, 1, 0)
 		TextButton.Font = Enum.Font.SourceSans
 		TextButton.Text = ""
 		TextButton.TextColor3 = Color3.fromRGB(0, 0, 0)
 		TextButton.TextSize = 14.000
 	
-		if bodyText ~= "" then
+		if hasDesc then
 			TextLabelNoti2.Name = 'TextColor'
 			TextLabelNoti2.Parent = Noticontainer
-			TextLabelNoti2.BackgroundColor3 = Color3.fromRGB(230, 230, 230)
-			TextLabelNoti2.BackgroundTransparency = 1.000
-			TextLabelNoti2.Position = UDim2.new(0, 10, 0, 35)
-			TextLabelNoti2.Size = UDim2.new(1, -15, 0, 0)
-			TextLabelNoti2.Font = Enum.Font.GothamBold
-			TextLabelNoti2.Text = bodyText
-			TextLabelNoti2.TextSize = 14.000
+			TextLabelNoti2.BackgroundTransparency = 1
+			TextLabelNoti2.Position = UDim2.new(0, 10, 0, 30)
+			TextLabelNoti2.Size = UDim2.new(1, -20, 0, 0)
+			TextLabelNoti2.Font = Enum.Font.Gotham
+			TextLabelNoti2.Text = tostring(DescText)
+			TextLabelNoti2.TextSize = 13
 			TextLabelNoti2.TextXAlignment = Enum.TextXAlignment.Left
-			TextLabelNoti2.RichText = true
-			TextLabelNoti2.TextColor3 = getgenv().UIColor["Text Color"]
-			TextLabelNoti2.AutomaticSize = Enum.AutomaticSize.Y
 			TextLabelNoti2.TextWrapped = true
+			TextLabelNoti2.TextColor3 = getgenv().UIColor["Text Color"]
+			TextLabelNoti2.TextTransparency = 1
+			TextLabelNoti2.AutomaticSize = Enum.AutomaticSize.Y
 			table.insert(UpdateCallBack["Text Color"],function() 
 				TextLabelNoti2.TextColor3 = getgenv().UIColor["Text Color"]
 			end)
 		end
 	
-		local function remove()
-			TweenService:Create(Noticontainer,TweenInfo.new(getgenv().UIColor["Tween Animation 1 Speed"]),{Position = UDim2.new(1,0,0,0)}):Play()
-			wait(.25)
-			NotiFrame:Destroy()
+		local function tweenNoti(show)
+			local targetPos = show and UDim2.new(0,0,0,0) or UDim2.new(1, 12, 0, 0)
+			local targetBg = show and 0.12 or 1
+			local targetText = show and 0 or 1
+			local tInfo = TweenInfo.new(getgenv().UIColor["Tween Animation 1 Speed"], Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+			TweenService:Create(Noticontainer, tInfo, {Position = targetPos, BackgroundTransparency = targetBg}):Play()
+			TweenService:Create(TextLabelNoti, tInfo, {TextTransparency = targetText}):Play()
+			TweenService:Create(CloseImage, tInfo, {ImageTransparency = targetText}):Play()
+			Accent.BackgroundTransparency = targetText
+			if hasDesc then
+				TweenService:Create(TextLabelNoti2, tInfo, {TextTransparency = targetText}):Play()
+			end
 		end
 	
-		TweenService:Create(Noticontainer,TweenInfo.new(getgenv().UIColor["Tween Animation 1 Speed"]),{Position = UDim2.new(0,0,0,0)}):Play()
+		local function remove()
+			tweenNoti(false)
+			task.delay(0.25, function()
+				if NotiFrame then
+					NotiFrame:Destroy()
+				end
+			end)
+		end
+	
+		tweenNoti(true)
 	
 		TextButton.MouseEnter:Connect(function()
 			TweenService:Create(CloseImage, TweenInfo.new(getgenv().UIColor["Tween Animation 1 Speed"]),{ImageColor3 = getgenv().UIColor["Search Icon Highlight Color"]}):Play()
@@ -882,16 +891,12 @@ end
 	
 		TextButton.MouseButton1Click:Connect(function()
 			spawn(function() Library_Function.ButtonEffect() end)
-			wait(.25)
 			remove()
 		end)
 	
-		spawn(function()
-			wait(Timeshow)
+		task.delay(Timeshow, function()
 			remove()
 		end)
-	
-	
 	end
 	
 	function Library.CreateMain(Setting)
@@ -2784,10 +2789,36 @@ end
 	
 		local Main_Function = {}
 	
-		local LayoutOrderBut = -1
-		local LayoutOrder = -1
-		local PageCounter = 1
-		local oldobj, oldlay, oldobjIsSettings
+	local LayoutOrderBut = -1
+	local LayoutOrder = -1
+	local PageCounter = 1
+	local oldobj, oldlay, oldobjIsSettings
+	local pageLineTweens = {}
+	local function setPageLine(line, size, position, anchor, immediate)
+		if not line then
+			return
+		end
+		if pageLineTweens[line] then
+			pageLineTweens[line]:Cancel()
+			pageLineTweens[line] = nil
+		end
+		line.AnchorPoint = anchor
+		line.Position = position
+		if immediate then
+			line.Size = size
+			return
+		end
+		local t = TweenService:Create(line, TweenInfo.new(getgenv().UIColor["Tween Animation 1 Speed"], Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+			Size = size
+		})
+		pageLineTweens[line] = t
+		t:Play()
+		t.Completed:Connect(function()
+			if pageLineTweens[line] == t then
+				pageLineTweens[line] = nil
+			end
+		end)
+	end
 	
 		function Main_Function.CreatePage(Setting)
 	
@@ -3074,15 +3105,15 @@ end
 				oldobj = PageName
 				oldlay = PageName.LayoutOrder
 				oldobjIsSettings = isSettingsPage
-				PageName.Frame.Line.PageInLine.Size = UDim2.new(1, -10, 1, -10)
+				setPageLine(PageName.Frame.Line.PageInLine, UDim2.new(1, -10, 1, -10), UDim2.new(0.5, 0, .5, 0), Vector2.new(.5,.5), true)
 			elseif oldobjIsSettings and not isSettingsPage then
 				if oldobj and oldobj:FindFirstChild("Frame") and oldobj.Frame:FindFirstChild("Line") then
-					oldobj.Frame.Line.PageInLine.Size = UDim2.new(1, -10, 0, 0)
+					setPageLine(oldobj.Frame.Line.PageInLine, UDim2.new(1, -10, 0, 0), UDim2.new(0.5, 0, 1, 0), Vector2.new(.5,1), true)
 				end
 				oldobj = PageName
 				oldlay = PageName.LayoutOrder
 				oldobjIsSettings = false
-				PageName.Frame.Line.PageInLine.Size = UDim2.new(1, -10, 1, -10)
+				setPageLine(PageName.Frame.Line.PageInLine, UDim2.new(1, -10, 1, -10), UDim2.new(0.5, 0, .5, 0), Vector2.new(.5,.5), true)
 			end
 	
 			PageButton.MouseButton1Click:Connect(function()
@@ -3106,28 +3137,14 @@ end
 				for i,v in next, ControlList:GetChildren() do
 					if not (v:IsA('UIListLayout')) then
 						if v.Name == Page_Name.."_Control" then 
-							if v.LayoutOrder > oldlay  then 
-								oldobj.Active = false 
-								TweenService:Create(oldobj.Frame.Line.PageInLine,TweenInfo.new(getgenv().UIColor["Tween Animation 1 Speed"]),{Size = UDim2.new(1,-10,0,0),Position = UDim2.new(0.5, 0, 1, 0), AnchorPoint = Vector2.new(.5,1)}):Play()
-								v.Frame.Line.PageInLine.Position = UDim2.new(0.5, 0, 0, 0)
-								v.Frame.Line.PageInLine.AnchorPoint = Vector2.new(.5,0)
-								wait(getgenv().UIColor["Tween Animation 1 Speed"])
-								TweenService:Create(v.Frame.Line.PageInLine,TweenInfo.new(getgenv().UIColor["Tween Animation 1 Speed"]),{Size = UDim2.new(1,-10,1,-10),Position = UDim2.new(0.5, 0, .5, 0), AnchorPoint = Vector2.new(.5,.5)}):Play()
-								v.Active = true
-								oldobj = v
-								oldlay = v.LayoutOrder
-							else
-								oldobj.Active = false 
-								TweenService:Create(oldobj.Frame.Line.PageInLine,TweenInfo.new(getgenv().UIColor["Tween Animation 1 Speed"]),{Size = UDim2.new(1,-10,0,0),Position = UDim2.new(0.5, 0, 0, 0), AnchorPoint = Vector2.new(.5,0)}):Play()
-								v.Frame.Line.PageInLine.Position = UDim2.new(0.5, 0, 1, 0)
-								v.Frame.Line.PageInLine.AnchorPoint = Vector2.new(.5,1)
-								wait(getgenv().UIColor["Tween Animation 1 Speed"])
-								TweenService:Create(v.Frame.Line.PageInLine,TweenInfo.new(getgenv().UIColor["Tween Animation 1 Speed"]),{Size = UDim2.new(1,-10,1,-10),Position = UDim2.new(0.5, 0, .5, 0), AnchorPoint = Vector2.new(.5,.5)}):Play()
-								v.Active = true
-								oldobj = v
-								oldlay = v.LayoutOrder
+							if oldobj and oldobj:FindFirstChild("Frame") and oldobj.Frame:FindFirstChild("Line") then
+								oldobj.Active = false
+								setPageLine(oldobj.Frame.Line.PageInLine, UDim2.new(1,-10,0,0), UDim2.new(0.5, 0, 1, 0), Vector2.new(.5,1), false)
 							end
-	
+							setPageLine(v.Frame.Line.PageInLine, UDim2.new(1,-10,1,-10), UDim2.new(0.5, 0, .5, 0), Vector2.new(.5,.5), false)
+							v.Active = true
+							oldobj = v
+							oldlay = v.LayoutOrder
 						end
 					end
 				end
