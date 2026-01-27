@@ -70,6 +70,14 @@ end
 		for k, v in pairs(tabl) do 
 			if typeof(v) == "Color3" then 
 				ret[k] = Rac(v)
+			elseif typeof(v) == "EnumItem" then
+				ret[k] = tostring(v)
+			elseif typeof(v) == "Vector3" then
+				ret[k] = {v.X, v.Y, v.Z, "Vec3"}
+			elseif typeof(v) == "CFrame" then
+				ret[k] = {v:GetComponents(), "Cf"}
+			elseif typeof(v) == "Instance" or type(v) == "function" then
+				-- skip unsupported types for JSON configs
 			elseif type(v) == "table" then
 				ret[k] = CorrectTable(v)
 			else
@@ -83,6 +91,14 @@ end
 		for k,v in pairs(tabl) do 
 			if type(v) == "table" and v[4] == "Dit" then 
 				ret[k] = Color3.fromRGB(unpack(v))
+			elseif type(v) == "table" and v[4] == "Vec3" then
+				ret[k] = Vector3.new(v[1], v[2], v[3])
+			elseif type(v) == "table" and v[#v] == "Cf" then
+				local comps = {}
+				for i = 1, math.min(12, #v - 1) do
+					comps[i] = v[i]
+				end
+				ret[k] = CFrame.new(unpack(comps))
 			elseif type(v) == "table" then
 				ret[k] = DCorrectTable(v)
 			else
@@ -476,48 +492,56 @@ function Library.ResetTheme()
 	SaveCustomUISettings()
 end
 
-function Library.SaveProfile(name)
-	local profile = normalizeProfileName(name)
-	local ok, err = pcall(function()
-		if not isfolder("Xero Hub") then
-			makefolder("Xero Hub")
+	function Library.SaveProfile(name)
+		local profile = normalizeProfileName(name)
+		local ok, err = pcall(function()
+			if not isfolder("Xero Hub") then
+				makefolder("Xero Hub")
+			end
+			local payload = {
+				Theme = SettingsRac,
+				Flags = Library.Flags
+			}
+			writefile("Xero Hub/" .. profile .. ".json", HttpService:JSONEncode(CorrectTable(payload)))
+		end)
+		if not ok then
+			warn(err)
+			return nil
 		end
-		writefile("Xero Hub/" .. profile .. ".json", HttpService:JSONEncode(CorrectTable(SettingsRac)))
-	end)
-	if not ok then
-		warn(err)
-		return nil
-	end
 	return profile
 end
 
-function Library.LoadProfile(name)
-	local profile = normalizeProfileName(name)
-	local path = "Xero Hub/" .. profile .. ".json"
-	if not isfile(path) then
-		return false
-	end
-	local ok, data = pcall(function()
-		return HttpService:JSONDecode(readfile(path))
-	end)
-	if not ok or type(data) ~= "table" then
-		if not ok then
-			warn(data)
+	function Library.LoadProfile(name)
+		local profile = normalizeProfileName(name)
+		local path = "Xero Hub/" .. profile .. ".json"
+		if not isfile(path) then
+			return false
 		end
-		return false
-	end
-	local fixed = DCorrectTable(data)
-	for k,v in pairs(fixed) do
-		SettingsRac[k] = v
-	end
-	for k,v in pairs(SettingsRac) do
-		if v and v.Color then
-			getgenv().UIColor[k] = v.Color
+		local ok, data = pcall(function()
+			return HttpService:JSONDecode(readfile(path))
+		end)
+		if not ok or type(data) ~= "table" then
+			if not ok then
+				warn(data)
+			end
+			return false
 		end
+		local fixed = DCorrectTable(data)
+		local themeTable = (type(fixed.Theme) == "table" and fixed.Theme) or fixed
+		for k,v in pairs(themeTable) do
+			SettingsRac[k] = v
+		end
+		for k,v in pairs(SettingsRac) do
+			if v and v.Color then
+				getgenv().UIColor[k] = v.Color
+			end
+		end
+		if type(fixed.Flags) == "table" then
+			Library.ApplyFlags(fixed.Flags, false)
+		end
+		SaveCustomUISettings()
+		return true
 	end
-	SaveCustomUISettings()
-	return true
-end
 
 function Library.ListProfiles()
 	if not isfolder("Xero Hub") or not listfiles then
