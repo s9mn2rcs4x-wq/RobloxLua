@@ -740,7 +740,6 @@ end
 		local Noticontainer = Instance.new("Frame")
 		local UICorner = Instance.new("UICorner")
 		local UIStroke = Instance.new("UIStroke")
-		local Accent = Instance.new("Frame")
 		local Topnoti = Instance.new("Frame")
 		local TextLabelNoti = Instance.new("TextLabel")
 		local CloseContainer = Instance.new("Frame")
@@ -759,13 +758,20 @@ end
 		Noticontainer.Name = "Noticontainer"
 		Noticontainer.Parent = NotiFrame
 		Noticontainer.Position = UDim2.new(1, 12, 0, 0)
-		Noticontainer.Size = UDim2.new(1, 0, 1, 8)
+		Noticontainer.Size = UDim2.new(1, 0, 0, 0)
 		Noticontainer.AutomaticSize = Enum.AutomaticSize.Y
-		Noticontainer.BackgroundColor3 = getgenv().UIColor["Background 2 Color"]
+		Noticontainer.BackgroundColor3 = getgenv().UIColor["Background 3 Color"]
 		Noticontainer.BackgroundTransparency = 1
-		table.insert(UpdateCallBack["Background 2 Color"],function() 
-			Noticontainer.BackgroundColor3 = getgenv().UIColor["Background 2 Color"]
+		table.insert(UpdateCallBack["Background 3 Color"],function() 
+			Noticontainer.BackgroundColor3 = getgenv().UIColor["Background 3 Color"]
 		end)
+		
+		local NotiPadding = Instance.new("UIPadding")
+		NotiPadding.PaddingLeft = UDim.new(0, 10)
+		NotiPadding.PaddingRight = UDim.new(0, 10)
+		NotiPadding.PaddingTop = UDim.new(0, 8)
+		NotiPadding.PaddingBottom = UDim.new(0, 8)
+		NotiPadding.Parent = Noticontainer
 	
 		UICorner.CornerRadius = UDim.new(0, 6)
 		UICorner.Parent = Noticontainer
@@ -778,26 +784,17 @@ end
 			UIStroke.Color = getgenv().UIColor["Border Color"]
 		end)
 	
-		Accent.Name = "Accent"
-		Accent.Parent = Noticontainer
-		Accent.BackgroundColor3 = getgenv().UIColor["Page Selected Color"]
-		Accent.Size = UDim2.new(0, 3, 1, 0)
-		Accent.BackgroundTransparency = 1
-		table.insert(UpdateCallBack["Page Selected Color"],function()
-			Accent.BackgroundColor3 = getgenv().UIColor["Page Selected Color"]
-		end)
-	
 		Topnoti.Name = "Topnoti"
 		Topnoti.Parent = Noticontainer
 		Topnoti.BackgroundTransparency = 1
-		Topnoti.Position = UDim2.new(0, 10, 0, 6)
-		Topnoti.Size = UDim2.new(1, -20, 0, 22)
+		Topnoti.Position = UDim2.new(0, 0, 0, 0)
+		Topnoti.Size = UDim2.new(1, 0, 0, 20)
 	
 		TextLabelNoti.Name = "TextLabelNoti"
 		TextLabelNoti.Parent = Topnoti
 		TextLabelNoti.BackgroundTransparency = 1
 		TextLabelNoti.Position = UDim2.new(0, 0, 0, 0)
-		TextLabelNoti.Size = UDim2.new(1, -26, 1, 0)
+		TextLabelNoti.Size = UDim2.new(1, -22, 1, 0)
 		TextLabelNoti.Font = Enum.Font.GothamSemibold
 		TextLabelNoti.Text = tostring(TitleText)
 		TextLabelNoti.TextSize = 14
@@ -814,7 +811,7 @@ end
 		CloseContainer.AnchorPoint = Vector2.new(1, 0.5)
 		CloseContainer.BackgroundTransparency = 1
 		CloseContainer.Position = UDim2.new(1, 0, 0.5, 0)
-		CloseContainer.Size = UDim2.new(0, 18, 0, 18)
+		CloseContainer.Size = UDim2.new(0, 16, 0, 16)
 	
 		CloseImage.Name = "CloseImage"
 		CloseImage.Parent = CloseContainer
@@ -841,8 +838,8 @@ end
 			TextLabelNoti2.Name = 'TextColor'
 			TextLabelNoti2.Parent = Noticontainer
 			TextLabelNoti2.BackgroundTransparency = 1
-			TextLabelNoti2.Position = UDim2.new(0, 10, 0, 30)
-			TextLabelNoti2.Size = UDim2.new(1, -20, 0, 0)
+			TextLabelNoti2.Position = UDim2.new(0, 0, 0, 22)
+			TextLabelNoti2.Size = UDim2.new(1, 0, 0, 0)
 			TextLabelNoti2.Font = Enum.Font.Gotham
 			TextLabelNoti2.Text = tostring(DescText)
 			TextLabelNoti2.TextSize = 13
@@ -858,13 +855,12 @@ end
 	
 		local function tweenNoti(show)
 			local targetPos = show and UDim2.new(0,0,0,0) or UDim2.new(1, 12, 0, 0)
-			local targetBg = show and 0.12 or 1
+			local targetBg = show and 0.2 or 1
 			local targetText = show and 0 or 1
 			local tInfo = TweenInfo.new(getgenv().UIColor["Tween Animation 1 Speed"], Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
 			TweenService:Create(Noticontainer, tInfo, {Position = targetPos, BackgroundTransparency = targetBg}):Play()
 			TweenService:Create(TextLabelNoti, tInfo, {TextTransparency = targetText}):Play()
 			TweenService:Create(CloseImage, tInfo, {ImageTransparency = targetText}):Play()
-			Accent.BackgroundTransparency = targetText
 			if hasDesc then
 				TweenService:Create(TextLabelNoti2, tInfo, {TextTransparency = targetText}):Play()
 			end
