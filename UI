@@ -171,6 +171,78 @@ local function safeCall(fn, ...)
 	end
 end
 
+-- Simple flags/options system (Linoria-style) so configs can save/restore UI states.
+Library.Flags = Library.Flags or {}
+Library.Options = Library.Options or {}
+Library_Function._applyingFlags = false
+
+local function normalizeFlagName(name)
+	local s = tostring(name or "")
+	s = s:gsub("^%s+", ""):gsub("%s+$", "")
+	if s == "" then
+		return nil
+	end
+	return s
+end
+
+local function decodeInputEnum(value)
+	if typeof(value) == "EnumItem" then
+		return value
+	end
+	if type(value) ~= "string" then
+		return nil
+	end
+	local s = value
+	s = s:gsub("^Enum%.KeyCode%.", "")
+	s = s:gsub("^Enum%.UserInputType%.", "")
+	if s == "Mouse1" then
+		return Enum.UserInputType.MouseButton1
+	elseif s == "Mouse2" then
+		return Enum.UserInputType.MouseButton2
+	elseif s == "Mouse3" then
+		return Enum.UserInputType.MouseButton3
+	end
+	return Enum.KeyCode[s] or Enum.UserInputType[s]
+end
+
+function Library.GetFlag(flag)
+	return Library.Flags[flag]
+end
+
+function Library.SetFlag(flag, value)
+	local name = normalizeFlagName(flag)
+	if not name then
+		return
+	end
+	local opt = Library.Options[name]
+	if opt and type(opt.SetValue) == "function" then
+		opt.SetValue(value)
+	else
+		Library.Flags[name] = value
+	end
+end
+
+function Library.ApplyFlags(flags, silent)
+	if type(flags) ~= "table" then
+		return
+	end
+	Library_Function._applyingFlags = true
+	for k, v in pairs(flags) do
+		Library.Flags[k] = v
+	end
+	for k, v in pairs(flags) do
+		local opt = Library.Options[k]
+		if opt and type(opt.SetValue) == "function" then
+			if silent and type(opt.SetValueSilent) == "function" then
+				opt.SetValueSilent(v)
+			else
+				opt.SetValue(v)
+			end
+		end
+	end
+	Library_Function._applyingFlags = false
+end
+
 local function addStroke(target, colorKey, thickness, transparency)
 	if not target then
 		return nil
@@ -3109,8 +3181,8 @@ end
 	
 					local Section_Function = {}
 	
-					   function Section_Function.CreateToggle(Setting, Callback)
-	
+						function Section_Function.CreateToggle(Setting, Callback)
+
 							local Title = tostring(Setting.Title)
 							local Desc = Setting.Desc
 							local Default = Setting.Default
@@ -3125,6 +3197,25 @@ end
 							local textRightPad = 35 + (hasBox and (boxWidth + boxGap) or 0)
 							local leftPadTitle = 10
 							local leftPadDesc = 15
+							local flag = normalizeFlagName(Setting.Flag or Title)
+							local boxFlag = nil
+							if hasBox then
+								boxFlag = normalizeFlagName(BoxSetting.Flag or (flag and (flag .. "_Box")))
+							end
+							if flag and Library.Flags[flag] ~= nil then
+								Default = Library.Flags[flag]
+							end
+							Default = Default and true or false
+							if flag and Library.Flags[flag] == nil then
+								Library.Flags[flag] = Default
+							end
+							if hasBox and boxFlag then
+								if Library.Flags[boxFlag] ~= nil then
+									boxValue = tostring(Library.Flags[boxFlag])
+								elseif boxValue ~= nil then
+									Library.Flags[boxFlag] = boxValue
+								end
+							end
 	
 							local ToggleFrame = Instance.new("Frame")
 							local TogFrame1 = Instance.new("Frame")
@@ -3303,6 +3394,9 @@ end
 
 								BoxText.FocusLost:Connect(function()
 									boxValue = BoxText.Text
+									if boxFlag and not Library_Function._applyingFlags then
+										Library.Flags[boxFlag] = boxValue
+									end
 									if Callback then
 										safeCall(Callback,Default, boxValue)
 									end
@@ -3319,20 +3413,25 @@ end
 							ToggleList.VerticalAlignment = Enum.VerticalAlignment.Center
 							ToggleList.Padding = UDim.new(0, 5)
 	
-							local function ChangeStage(val)
-	
+							local function ChangeStage(val, fireCallback)
+
 								local csize = val and UDim2.new(1,-4,1,-4) or UDim2.new(0,0,0,0)
 								local pos = val and UDim2.new(.5,0,.5,0) or UDim2.new(0,0,1,0)
 								local apos = val and Vector2.new(.5,.5) or Vector2.new(0,1)
-	
+
 								game.TweenService:Create(check,TweenInfo.new(getgenv().UIColor["Tween Animation 1 Speed"]),{Size = csize, Position = pos, AnchorPoint = apos}):Play()
-	
-								safeCall(Callback,val, boxValue)
-	
+
+								if fireCallback ~= false then
+									safeCall(Callback,val, boxValue)
+								end
+								if flag and not Library_Function._applyingFlags then
+									Library.Flags[flag] = val
+								end
+
 							end
-	
+
 							if Callback then ChangeStage(Default) end 
-	
+
 							ToggleButton.MouseButton1Click:Connect(function()
 								Library_Function.ButtonEffect()
 							end)
@@ -3343,18 +3442,31 @@ end
 							ToggleButton.MouseButton1Down:Connect(function()
 								ButtonClick()
 							end)
-	
+
 							local tog_func = {}
 
 									function tog_func.SetStage(value)
-										if value ~= Default then 
-											ButtonClick()
+										if value ~= Default then
+											Default = value and true or false
+											ChangeStage(Default)
 										end
+									end
+									
+									function tog_func.SetValue(value)
+										tog_func.SetStage(value)
+									end
+
+									function tog_func.SetValueSilent(value)
+										Default = value and true or false
+										ChangeStage(Default, false)
 									end
 
 									function tog_func.SetBoxValue(value)
 										if not hasBox then return end
 										boxValue = tostring(value)
+										if boxFlag and not Library_Function._applyingFlags then
+											Library.Flags[boxFlag] = boxValue
+										end
 										for _, child in ipairs(TogFrame1:GetChildren()) do
 											if child.Name == "ToggleBox" then
 												local tb = child:FindFirstChild("TextColorPlaceholder")
@@ -3368,6 +3480,28 @@ end
 									function tog_func.GetBoxValue()
 										return boxValue
 									end
+									
+									function tog_func.GetValue()
+										return Default
+									end
+
+							if flag then
+								Library.Options[flag] = tog_func
+							end
+
+							if boxFlag then
+								Library.Options[boxFlag] = {
+									SetValue = function(value)
+										tog_func.SetBoxValue(value)
+									end,
+									SetValueSilent = function(value)
+										tog_func.SetBoxValue(value)
+									end,
+									GetValue = function()
+										return tog_func.GetBoxValue()
+									end
+								}
+							end
 
 							return tog_func
 	
@@ -3525,6 +3659,13 @@ end
 							local Callback = Callback or function() end
 							local IndexTable = Setting.IndexTable
 							local pairs = Setting.SortPairs or pairs
+							local flag = normalizeFlagName(Setting.Flag or Title)
+							if flag and Library.Flags[flag] ~= nil then
+								Default = Library.Flags[flag]
+							end
+							if flag and Library.Flags[flag] == nil then
+								Library.Flags[flag] = Default
+							end
 
 							local DropdownFrame = Instance.new("Frame")
 							local Dropdownbg = Instance.new("Frame")
@@ -3845,7 +3986,10 @@ end
 											if Callback then 
 												safeCall(Callback,v,i)
 											end
-	
+											if flag and not Library_Function._applyingFlags then
+												Library.Flags[flag] = v
+											end
+
 										end)
 	
 										Dropvalbutton.MouseButton1Click:Connect(function()
@@ -3940,6 +4084,9 @@ end
 												safeCall(Callback,i,v)
 												ListNew[i] = v
 											end
+											if flag and not Library_Function._applyingFlags then
+												Library.Flags[flag] = ListNew
+											end
 										end)
 	
 									end
@@ -4010,9 +4157,74 @@ end
 									Library_Function.ButtonEffect()
 								end)
 							end
-	
+							local function setDropdownValue(value, fireCallback)
+								if Selected then
+									if type(value) ~= "table" then
+										return
+									end
+									for k, v in pairs(value) do
+										if ListNew[k] ~= nil then
+											ListNew[k] = v and true or false
+											if fireCallback ~= false then
+												safeCall(Callback, k, ListNew[k])
+											end
+										end
+									end
+									if flag and not Library_Function._applyingFlags then
+										Library.Flags[flag] = ListNew
+									end
+									refreshlist()
+									return
+								end
+
+								local idx = nil
+								local val = value
+								if type(value) == "number" then
+									idx = math.floor(value)
+									val = ListNew[idx]
+								else
+									idx = table.find(ListNew, value)
+								end
+								if not idx or val == nil then
+									return
+								end
+
+								Sel.Value = idx
+								if Search then
+									Dropdowntitle.PlaceholderText = Title..': '..tostring(val)
+								else
+									Dropdowntitle.Text = Title..': '..tostring(val)
+								end
+								refreshlist()
+								if fireCallback ~= false then
+									safeCall(Callback, val, idx)
+								end
+								if flag and not Library_Function._applyingFlags then
+									Library.Flags[flag] = val
+								end
+							end
+
 							local dropdown_function = {rf=refreshlist}
-	
+
+							function dropdown_function.SetValue(value)
+								setDropdownValue(value, true)
+							end
+
+							function dropdown_function.SetValueSilent(value)
+								setDropdownValue(value, false)
+							end
+
+							function dropdown_function.GetValue()
+								if Selected then
+									return ListNew
+								end
+								local idx = Sel.Value
+								if idx and idx > 0 then
+									return ListNew[idx]
+								end
+								return Default
+							end
+
 							function dropdown_function:ClearText()
 								if not Selected then
 									if Search then
@@ -4044,11 +4256,15 @@ end
 										safeCall(Callback,i,v)
 									end
 								end
-	
+								
 							end
-							
+
+							if flag then
+								Library.Options[flag] = dropdown_function
+							end
+
 							return dropdown_function
-	
+
 						end
 	
 						function Section_Function.CreateBind(Setting, Callback)
@@ -4056,9 +4272,15 @@ end
 							local TitleText = tostring(Setting.Title) or ""
 							local KeyCode = Setting.Key
 							local Default = Setting.Default or Setting.Key
-							local Type = tostring(Default):match("UserInputType") and "UserInputType" or "KeyCode"
 							local Callback = Callback or function() end
 							local OnChanged = Setting.Changed
+							local flag = normalizeFlagName(Setting.Flag or TitleText)
+
+							if flag and Library.Flags[flag] ~= nil then
+								Default = Library.Flags[flag]
+							end
+							Default = decodeInputEnum(Default) or Default
+							local Type = tostring(Default):match("UserInputType") and "UserInputType" or "KeyCode"
 							
 							KeyCode = tostring(KeyCode):gsub("Enum.UserInputType.", "")
 							KeyCode = tostring(KeyCode):gsub("Enum.KeyCode.", "")
@@ -4137,7 +4359,6 @@ end
 							Bindkey.BackgroundTransparency = 1.000
 							Bindkey.Size = UDim2.new(1, 0, 1, 0)
 							Bindkey.Font = Enum.Font.GothamBold
-							Bindkey.Text = tostring(Default):gsub("Enum.KeyCode.", "");
 							Bindkey.TextSize = 14.000
 							Bindkey.TextColor3 = getgenv().UIColor["Text Color"]
 							table.insert(UpdateCallBack["Text Color"],function() 
@@ -4149,7 +4370,45 @@ end
 								[Enum.UserInputType.MouseButton2] = "Mouse2";
 								[Enum.UserInputType.MouseButton3] = "Mouse3";
 							};
-	
+
+							local function bindToText(value)
+								if typeof(value) == "EnumItem" then
+									if WhitelistedType[value] then
+										return WhitelistedType[value]
+									end
+									local s = tostring(value)
+									s = s:gsub("^Enum%.KeyCode%.", ""):gsub("^Enum%.UserInputType%.", "")
+									return s
+								end
+								if type(value) == "string" then
+									local s = value
+									s = s:gsub("^Enum%.KeyCode%.", ""):gsub("^Enum%.UserInputType%.", "")
+									return s
+								end
+								return tostring(value)
+							end
+
+							local function setBindValue(value, fireChanged)
+								local decoded = decodeInputEnum(value)
+								if not decoded then
+									return
+								end
+								Default = decoded
+								Type = tostring(Default):match("UserInputType") and "UserInputType" or "KeyCode"
+								Bindkey.Text = bindToText(Default)
+								if flag and not Library_Function._applyingFlags then
+									Library.Flags[flag] = bindToText(Default)
+								end
+								if fireChanged ~= false then
+									safeCall(OnChanged, Default, Type)
+								end
+							end
+
+							Bindkey.Text = bindToText(Default)
+							if flag and Library.Flags[flag] == nil then
+								Library.Flags[flag] = bindToText(Default)
+							end
+
 							Bindkey.MouseButton1Click:Connect(function()
 								Library_Function.ButtonEffect()
 							end)
@@ -4165,6 +4424,9 @@ end
 										wait(0.1)
 										Default = newKey
 										Type = newType
+										if flag and not Library_Function._applyingFlags then
+											Library.Flags[flag] = bindToText(newKey)
+										end
 										safeCall(OnChanged, Default, Type)
 									end)
 								end
@@ -4185,6 +4447,26 @@ end
 									safeCall(Callback,Default);
 								end;
 							end);
+
+							local bind_function = {}
+
+							function bind_function.SetValue(value)
+								setBindValue(value, true)
+							end
+
+							function bind_function.SetValueSilent(value)
+								setBindValue(value, false)
+							end
+
+							function bind_function.GetValue()
+								return Default
+							end
+
+							if flag then
+								Library.Options[flag] = bind_function
+							end
+							
+							return bind_function
 							
 						end
 	
@@ -4195,6 +4477,20 @@ end
 							local Default = Setting.Default or false
 							local Number_Only = Setting.Number or false 
 							local Callback = Callback or function() end
+							local flag = normalizeFlagName(Setting.Flag or TitleText)
+							if flag and Library.Flags[flag] ~= nil then
+								Default = Library.Flags[flag]
+							end
+							if flag and Library.Flags[flag] == nil then
+								Library.Flags[flag] = Default
+							end
+
+							local function boxValueToText(value)
+								if value == nil or value == false then
+									return ""
+								end
+								return tostring(value)
+							end
 	
 							local BoxFrame = Instance.new("Frame")
 							local BoxCorner = Instance.new("UICorner")
@@ -4322,29 +4618,45 @@ end
 	
 							Boxxx.FocusLost:Connect(function()
 								TweenService:Create(Lineeeee,TweenInfo.new(getgenv().UIColor["Tween Animation 2 Speed"]),{BackgroundTransparency = 1}):Play()
-								if Boxxx.Text ~= '' then
-									safeCall(Callback,Boxxx.Text)
+								local textValue = Boxxx.Text
+								if flag and not Library_Function._applyingFlags then
+									Library.Flags[flag] = textValue
+								end
+								if textValue ~= '' then
+									safeCall(Callback,textValue)
 								end
 							end)
 	
 							local textbox_function = {}
-	
+
 							if Default then
-								Boxxx.Text = Default
+								Boxxx.Text = boxValueToText(Default)
 								safeCall(Callback,Default)
 							end
-	
+
 							function textbox_function.SetValue(Value)
-								Boxxx.Text = Value
+								local textValue = boxValueToText(Value)
+								Boxxx.Text = textValue
+								if flag and not Library_Function._applyingFlags then
+									Library.Flags[flag] = textValue
+								end
 								safeCall(Callback,Value)
 							end 
 	
 							function textbox_function.SetValueSilent(Value)
-								Boxxx.Text = Value
+								local textValue = boxValueToText(Value)
+								Boxxx.Text = textValue
+								if flag and not Library_Function._applyingFlags then
+									Library.Flags[flag] = textValue
+								end
 							end
 
 							function textbox_function.GetValue()
 								return Boxxx.Text
+							end
+
+							if flag then
+								Library.Options[flag] = textbox_function
 							end
 	
 							return textbox_function;
@@ -4360,6 +4672,16 @@ end
 							local Precise = Setting.Precise or false
 							local DefaultValue = tonumber(Setting.Default) or 0
 							local Callback = Callback or function() end
+							local flag = normalizeFlagName(Setting.Flag or TitleText)
+							if flag and Library.Flags[flag] ~= nil then
+								local fv = tonumber(Library.Flags[flag])
+								if fv ~= nil then
+									DefaultValue = fv
+								end
+							end
+							if flag and Library.Flags[flag] == nil then
+								Library.Flags[flag] = DefaultValue
+							end
 	
 							local SizeChia = 400;
 	
@@ -4506,66 +4828,76 @@ end
 								safeCall(Callback,DefaultValue)
 							end
 	
-							SliderButton.MouseButton1Down:Connect(function()
+						local function SetSliderValue(Value, fireCallback)
+							local num = tonumber(Value)
+							if num == nil then
+								return
+							end
+							local clamped = math.clamp(num, Min_Value, Max_Value)
+							if clamped <= Min_Value then
+								Bar.Size = UDim2.new(0,(0 * SizeChia), 0, 6)
+								Sliderbox_2.Text = Min_Value
+							elseif clamped >= Max_Value then
+								Bar.Size = UDim2.new(0,(Max_Value  /  Max_Value * SizeChia), 0, 6)
+								Sliderbox_2.Text = Max_Value
+							else
+								Bar.Size = UDim2.new(1 - ((Max_Value - clamped) / (Max_Value - Min_Value)),0, 0, 6)
+								Sliderbox_2.Text = clamped
+							end
+							if fireCallback ~= false then
+								safeCall(Callback,clamped)
+							end
+							if flag and not Library_Function._applyingFlags then
+								Library.Flags[flag] = clamped
+							end
+						end
+
+						SliderButton.MouseButton1Down:Connect(function()
+							local value = Precise and  tonumber(string.format("%.1f",(((tonumber(Max_Value) - tonumber(Min_Value)) / SizeChia) * Bar.AbsoluteSize.X) + tonumber(Min_Value))) or math.floor((((tonumber(Max_Value) - tonumber(Min_Value)) / SizeChia) * Bar.AbsoluteSize.X) + tonumber(Min_Value))
+
+							Bar.Size = UDim2.new(0, math.clamp(mouse.X - Bar.AbsolutePosition.X, 0, SizeChia), 0, 6)
+							SetSliderValue(value)
+							moveconnection = mouse.Move:Connect(function()   
 								local value = Precise and  tonumber(string.format("%.1f",(((tonumber(Max_Value) - tonumber(Min_Value)) / SizeChia) * Bar.AbsoluteSize.X) + tonumber(Min_Value))) or math.floor((((tonumber(Max_Value) - tonumber(Min_Value)) / SizeChia) * Bar.AbsoluteSize.X) + tonumber(Min_Value))
-	
-								pcall(function()
-									safeCall(Callback,value)
-									Sliderbox_2.Text = value
-								end)
 								Bar.Size = UDim2.new(0, math.clamp(mouse.X - Bar.AbsolutePosition.X, 0, SizeChia), 0, 6)
-								moveconnection = mouse.Move:Connect(function()   
+								SetSliderValue(value)
+							end)
+							releaseconnection = uis.InputEnded:Connect(function(Mouse)
+								if Mouse.UserInputType == Enum.UserInputType.MouseButton1 then
 									local value = Precise and  tonumber(string.format("%.1f",(((tonumber(Max_Value) - tonumber(Min_Value)) / SizeChia) * Bar.AbsoluteSize.X) + tonumber(Min_Value))) or math.floor((((tonumber(Max_Value) - tonumber(Min_Value)) / SizeChia) * Bar.AbsoluteSize.X) + tonumber(Min_Value))
-									pcall(function()
-										safeCall(Callback,value)
-										Sliderbox_2.Text = value
-									end)
 									Bar.Size = UDim2.new(0, math.clamp(mouse.X - Bar.AbsolutePosition.X, 0, SizeChia), 0, 6)
-								end)
-								releaseconnection = uis.InputEnded:Connect(function(Mouse)
-									if Mouse.UserInputType == Enum.UserInputType.MouseButton1 then
-										local value = Precise and  tonumber(string.format("%.1f",(((tonumber(Max_Value) - tonumber(Min_Value)) / SizeChia) * Bar.AbsoluteSize.X) + tonumber(Min_Value))) or math.floor((((tonumber(Max_Value) - tonumber(Min_Value)) / SizeChia) * Bar.AbsoluteSize.X) + tonumber(Min_Value))
-	
-										pcall(function()
-											safeCall(Callback,value)
-											Sliderbox_2.Text = value
-										end)
-										Bar.Size = UDim2.new(0, math.clamp(mouse.X - Bar.AbsolutePosition.X, 0, SizeChia), 0, 6)
-										moveconnection:Disconnect()
-										releaseconnection:Disconnect()
-									end
-								end)
-							end)
-	
-							local function GetSliderValue(Value)
-								if tonumber(Value) <= Min_Value then
-									Bar.Size = UDim2.new(0,(0 * SizeChia), 0, 6)
-									Sliderbox_2.Text = Min_Value
-									safeCall(Callback,tonumber(Min_Value))
-	
-								elseif tonumber(Value) >= Max_Value then
-									Bar.Size = UDim2.new(0,(Max_Value  /  Max_Value * SizeChia), 0, 6)
-									Sliderbox_2.Text = Max_Value
-									safeCall(Callback,tonumber(Max_Value))
-								else
-									Bar.Size = UDim2.new(1 - ((Max_Value - Value) / (Max_Value - Min_Value)),0, 0, 6)
-									safeCall(Callback,tonumber(Value))
+									SetSliderValue(value)
+									moveconnection:Disconnect()
+									releaseconnection:Disconnect()
 								end
-							end
-	
-	
-							Sliderbox_2.FocusLost:Connect(function()
-								GetSliderValue(Sliderbox_2.Text)
 							end)
+						end)
 	
 	
-							local slider_function = {}
+						Sliderbox_2.FocusLost:Connect(function()
+							SetSliderValue(Sliderbox_2.Text)
+						end)
 	
-							function slider_function.SetValue(Value)
-								GetSliderValue(Value)
-							end
 	
-							return slider_function
+						local slider_function = {}
+
+						function slider_function.SetValue(Value)
+							SetSliderValue(Value)
+						end
+						
+						function slider_function.SetValueSilent(Value)
+							SetSliderValue(Value, false)
+						end
+						
+						function slider_function.GetValue()
+							return tonumber(Sliderbox_2.Text)
+						end
+						
+						if flag then
+							Library.Options[flag] = slider_function
+						end
+
+						return slider_function
 	
 	
 						end
