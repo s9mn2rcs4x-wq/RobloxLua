@@ -477,6 +477,35 @@ local function normalizeProfileName(name)
 	return cleaned
 end
 
+local function ensureConfigFolder()
+	if not isfolder("Xero Hub") then
+		makefolder("Xero Hub")
+	end
+	if not isfolder("Xero Hub/Configurations") then
+		makefolder("Xero Hub/Configurations")
+	end
+end
+
+local function getSerializableFlags()
+	local out = {}
+	for name, opt in pairs(Library.Options) do
+		if type(opt) == "table" and type(opt.GetValue) == "function" then
+			local ok, v = pcall(function()
+				return opt.GetValue()
+			end)
+			if ok then
+				out[name] = v
+			end
+		end
+	end
+	for name, v in pairs(Library.Flags) do
+		if out[name] == nil then
+			out[name] = v
+		end
+	end
+	return out
+end
+
 function Library.ResetTheme()
 	for k,v in pairs(DefaultUIColor) do
 		getgenv().UIColor[k] = v
@@ -495,26 +524,30 @@ end
 	function Library.SaveProfile(name)
 		local profile = normalizeProfileName(name)
 		local ok, err = pcall(function()
-			if not isfolder("Xero Hub") then
-				makefolder("Xero Hub")
-			end
+			ensureConfigFolder()
 			local payload = {
 				Theme = SettingsRac,
-				Flags = Library.Flags
+				Flags = getSerializableFlags()
 			}
-			writefile("Xero Hub/" .. profile .. ".json", HttpService:JSONEncode(CorrectTable(payload)))
+			writefile("Xero Hub/Configurations/" .. profile .. ".json", HttpService:JSONEncode(CorrectTable(payload)))
 		end)
 		if not ok then
 			warn(err)
 			return nil
 		end
-	return profile
-end
+		return profile
+	end
 
 	function Library.LoadProfile(name)
 		local profile = normalizeProfileName(name)
-		local path = "Xero Hub/" .. profile .. ".json"
-		if not isfile(path) then
+		local pathNew = "Xero Hub/Configurations/" .. profile .. ".json"
+		local pathOld = "Xero Hub/" .. profile .. ".json"
+		local path = nil
+		if isfile(pathNew) then
+			path = pathNew
+		elseif isfile(pathOld) then
+			path = pathOld
+		else
 			return false
 		end
 		local ok, data = pcall(function()
@@ -548,12 +581,24 @@ function Library.ListProfiles()
 		return {}
 	end
 	local out = {}
-	for _, filePath in ipairs(listfiles("Xero Hub")) do
-		local name = filePath:match("([^\\/]+)%.json$")
-		if name and (name .. ".json") ~= SaveCustomFileName then
-			table.insert(out, name)
+	pcall(function()
+		if isfolder("Xero Hub/Configurations") then
+			for _, filePath in ipairs(listfiles("Xero Hub/Configurations")) do
+				local name = filePath:match("([^\\/]+)%.json$")
+				if name then
+					table.insert(out, name)
+				end
+			end
 		end
-	end
+	end)
+	pcall(function()
+		for _, filePath in ipairs(listfiles("Xero Hub")) do
+			local name = filePath:match("([^\\/]+)%.json$")
+			if name and (name .. ".json") ~= SaveCustomFileName and not table.find(out, name) then
+				table.insert(out, name)
+			end
+		end
+	end)
 	table.sort(out)
 	return out
 end
@@ -4974,7 +5019,8 @@ end
 			uiSection.CreateToggle({
 				Title = "Anti-AFK",
 				Desc = "Prevent idle kick",
-				Default = antiDefault
+				Default = antiDefault,
+				Flag = "AntiAFK"
 			}, function(val)
 				if val then
 					Library.EnableAntiAFK()
@@ -4986,7 +5032,8 @@ end
 			uiSection.CreateToggle({
 				Title = "Auto Hide on Launch",
 				Desc = "Start UI hidden",
-				Default = getgenv().AutoHideOnLaunch == true
+				Default = getgenv().AutoHideOnLaunch == true,
+				Flag = "AutoHideOnLaunch"
 			}, function(val)
 				getgenv().AutoHideOnLaunch = val
 			end)
@@ -4996,6 +5043,7 @@ end
 				Title = "Toggle UI Key",
 				Key = toggleKey,
 				Default = toggleKey,
+				Flag = "ToggleKey",
 				Changed = function(newKey)
 					getgenv().ToggleKey = newKey
 					Library.SetToggleKey(newKey)
@@ -5012,7 +5060,8 @@ end
 			profileBox = profileSection.CreateBox({
 				Title = "Profile Name",
 				Placeholder = "Default",
-				Default = profileName
+				Default = profileName,
+				Flag = "AutoLoadConfigName"
 			}, function(val)
 				profileName = normalizeProfileName(val)
 				getgenv().AutoLoadConfigName = profileName
@@ -5035,7 +5084,8 @@ end
 			profileSection.CreateToggle({
 				Title = "Auto Load Config",
 				Desc = "Load this profile on launch",
-				Default = getgenv().AutoLoadConfig == true
+				Default = getgenv().AutoLoadConfig == true,
+				Flag = "AutoLoadConfig"
 			}, function(val)
 				syncProfileNameFromBox()
 				getgenv().AutoLoadConfig = val
