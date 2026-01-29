@@ -3275,7 +3275,6 @@ end
 							local boxPlaceholder = BoxSetting.Placeholder or ""
 							local boxValue = BoxSetting.Default or ""
 							local boxNumber = BoxSetting.Number
-							print("[CreateToggle] Creating toggle:", Title, "Flag:", Flag, "Default:", Default)
 							local boxWidth = hasBox and (tonumber(BoxSetting.Width) or 120) or 0
 							local boxHeight = hasBox and (tonumber(BoxSetting.Height) or 22) or 0
 							local textRightPad = 35 + (hasBox and (boxWidth + 6) or 0)
@@ -3516,21 +3515,28 @@ end
 
 							if Callback then ChangeStage(Default) end 
 
-							ToggleButton.MouseButton1Click:Connect(function()
-								Library_Function.ButtonEffect()
-							end)
-							local function ButtonClick() 
+							local function ButtonClick()
 								Default = not Default
 								ChangeStage(Default)
 							end
 							local lastToggleClick = 0
-							ToggleButton.MouseButton1Click:Connect(function()
+							local function handleTogglePress()
+								Library_Function.ButtonEffect()
 								local now = tick()
 								if (now - lastToggleClick) < 0.15 then
 									return
 								end
 								lastToggleClick = now
 								ButtonClick()
+							end
+							ToggleButton.MouseButton1Click:Connect(handleTogglePress)
+							if ToggleButton.Activated then
+								ToggleButton.Activated:Connect(handleTogglePress)
+							end
+							ToggleButton.InputBegan:Connect(function(input)
+								if input and input.UserInputType == Enum.UserInputType.MouseButton1 then
+									handleTogglePress()
+								end
 							end)
 
 							local tog_func = {}
@@ -5094,7 +5100,6 @@ end
 				Default = getgenv().AutoLoadConfig == true,
 				Flag = "AutoLoadConfig"
 			}, function(val)
-				print("[Auto Load Config] Toggle clicked, val:", val)
 				syncProfileNameFromBox()
 				getgenv().AutoLoadConfig = val
 				if val then
