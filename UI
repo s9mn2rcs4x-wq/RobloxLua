@@ -3264,19 +3264,21 @@ end
 					local Section_Function = {}
 	
 						function Section_Function.CreateToggle(Setting, Callback)
-
-							local Title = tostring(Setting.Title)
+							local Title = Setting.Title
 							local Desc = Setting.Desc
 							local Default = Setting.Default
-							if Default == nil then Default = false end
 							local Callback = Callback or function() end
-							local BoxSetting = type(Setting.Box) == "table" and Setting.Box or nil
-							local hasBox = BoxSetting ~= nil
-							local boxGap = 6
+							local Flag = Setting.Flag
+							local hasBox = Setting.HasBox
+							local BoxSetting = hasBox and Setting or {}
+							local boxFlag = BoxSetting.Flag
+							local boxPlaceholder = BoxSetting.Placeholder or ""
+							local boxValue = BoxSetting.Default or ""
+							local boxNumber = BoxSetting.Number
+							print("[CreateToggle] Creating toggle:", Title, "Flag:", Flag, "Default:", Default)
 							local boxWidth = hasBox and (tonumber(BoxSetting.Width) or 120) or 0
 							local boxHeight = hasBox and (tonumber(BoxSetting.Height) or 22) or 0
-							local boxValue = hasBox and tostring(BoxSetting.Default or "") or nil
-							local textRightPad = 35 + (hasBox and (boxWidth + boxGap) or 0)
+							local textRightPad = 35 + (hasBox and (boxWidth + 6) or 0)
 							local leftPadTitle = 10
 							local leftPadDesc = 15
 							local flag = normalizeFlagName(Setting.Flag or Title)
@@ -5092,6 +5094,7 @@ end
 				Default = getgenv().AutoLoadConfig == true,
 				Flag = "AutoLoadConfig"
 			}, function(val)
+				print("[Auto Load Config] Toggle clicked, val:", val)
 				syncProfileNameFromBox()
 				getgenv().AutoLoadConfig = val
 				if val then
