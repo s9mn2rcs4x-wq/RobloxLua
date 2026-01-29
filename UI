@@ -560,17 +560,24 @@ end
 			return false
 		end
 		local fixed = DCorrectTable(data)
-		local themeTable = (type(fixed.Theme) == "table" and fixed.Theme) or fixed
-		for k,v in pairs(themeTable) do
-			SettingsRac[k] = v
+		local themeTable = (type(fixed.Theme) == "table" and fixed.Theme) or nil
+		local flagsTable = (type(fixed.Flags) == "table" and fixed.Flags) or nil
+		if not themeTable and not flagsTable and type(fixed) == "table" then
+			-- Backwards compat / Rayfield-style configs: file is a raw flags table.
+			flagsTable = fixed
 		end
-		for k,v in pairs(SettingsRac) do
-			if v and v.Color then
-				getgenv().UIColor[k] = v.Color
+		if type(themeTable) == "table" then
+			for k,v in pairs(themeTable) do
+				SettingsRac[k] = v
+			end
+			for k,v in pairs(SettingsRac) do
+				if v and v.Color then
+					getgenv().UIColor[k] = v.Color
+				end
 			end
 		end
-		if type(fixed.Flags) == "table" then
-			Library.ApplyFlags(fixed.Flags, false)
+		if type(flagsTable) == "table" then
+			Library.ApplyFlags(flagsTable, false)
 		end
 		SaveCustomUISettings()
 		return true
