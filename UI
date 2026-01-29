@@ -5005,8 +5005,7 @@ end
 	
 		end
 
-		if builtInSettings and not Library_Function._builtInSettingsCreated then
-			Library_Function._builtInSettingsCreated = true
+		if builtInSettings and not (ControlList and ControlList:FindFirstChild("Settings_Control")) then
 			local settingsPage = Main_Function.CreatePage({
 				Page_Name = "Settings",
 				Page_Title = "Settings",
