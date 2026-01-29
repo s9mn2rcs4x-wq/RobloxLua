@@ -3521,7 +3521,13 @@ end
 								Default = not Default
 								ChangeStage(Default)
 							end
-							ToggleButton.MouseButton1Down:Connect(function()
+							local lastToggleClick = 0
+							ToggleButton.MouseButton1Click:Connect(function()
+								local now = tick()
+								if (now - lastToggleClick) < 0.15 then
+									return
+								end
+								lastToggleClick = now
 								ButtonClick()
 							end)
 
